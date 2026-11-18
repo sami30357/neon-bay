@@ -1,53 +1,54 @@
-// Keyboard and pointer input. Held keys give a steering direction; one-shot presses (start or
-// restart, pause) are queued as bit flags and taken once by the loop, so a press between two
-// frames is never lost and never counted twice.
+// Keyboard and mouse input for Neon Bay. Keys are tracked by code so the layout
+// never depends on the player's keyboard language. Mouse look uses pointer lock.
+export class Input {
+  constructor(canvas) {
+    this.keys = new Set();
+    this.mouseDX = 0;
+    this.mouseDY = 0;
+    this.mouseDown = false;
+    this.pointerLocked = false;
+    this.canvas = canvas;
+    this.onKey = null; // (code) => void, for one-shot actions
+    this.onMouseDown = null; // () => void, for shooting
 
-export const ACTION_CONFIRM = 1;
-export const ACTION_PAUSE = 2;
+    window.addEventListener('keydown', (event) => {
+      if (event.repeat) return;
+      this.keys.add(event.code);
+      if (this.onKey) this.onKey(event.code);
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+        event.preventDefault();
+      }
+    });
+    window.addEventListener('keyup', (event) => { this.keys.delete(event.code); });
+    window.addEventListener('blur', () => { this.keys.clear(); });
+    document.addEventListener('pointerlockchange', () => {
+      this.pointerLocked = document.pointerLockElement === canvas;
+    });
+    document.addEventListener('mousemove', (event) => {
+      if (!this.pointerLocked) return;
+      this.mouseDX += event.movementX || 0;
+      this.mouseDY += event.movementY || 0;
+    });
+    canvas.addEventListener('mousedown', (event) => {
+      if (event.button !== 0) return;
+      this.mouseDown = true;
+      if (!this.pointerLocked) canvas.requestPointerLock();
+      if (this.onMouseDown) this.onMouseDown();
+    });
+    window.addEventListener('mouseup', (event) => {
+      if (event.button === 0) this.mouseDown = false;
+    });
+  }
 
-const LEFT = new Set(['ArrowLeft', 'KeyA']);
-const RIGHT = new Set(['ArrowRight', 'KeyD']);
-const CONFIRM = new Set(['Space', 'Enter']);
-const PAUSE = new Set(['KeyP', 'Escape']);
-
-export function createInput(target) {
-  let left = false;
-  let right = false;
-  let actions = 0;
-
-  window.addEventListener('keydown', (event) => {
-    if (LEFT.has(event.code)) left = true;
-    else if (RIGHT.has(event.code)) right = true;
-    else if (CONFIRM.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_CONFIRM;
-    } else if (PAUSE.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_PAUSE;
-    } else return;
-    event.preventDefault();
-  });
-  window.addEventListener('keyup', (event) => {
-    if (LEFT.has(event.code)) left = false;
-    else if (RIGHT.has(event.code)) right = false;
-  });
-  // A key released while the tab is hidden never sends keyup: let go of everything on blur.
-  window.addEventListener('blur', () => {
-    left = false;
-    right = false;
-  });
-  target.addEventListener('pointerdown', () => {
-    actions |= ACTION_CONFIRM;
-  });
-
-  return {
-    /** -1 for left, 1 for right, 0 for neither or both. */
-    direction() {
-      return (right ? 1 : 0) - (left ? 1 : 0);
-    },
-    /** The one-shot presses since the last call, as ACTION_* flags. */
-    takeActions() {
-      const taken = actions;
-      actions = 0;
-      return taken;
-    },
-  };
+  down(code) { return this.keys.has(code); }
+  axis(negative, positive) {
+    return (this.keys.has(positive) ? 1 : 0) - (this.keys.has(negative) ? 1 : 0);
+  }
+  consumeMouse() {
+    const dx = this.mouseDX, dy = this.mouseDY;
+    this.mouseDX = 0; this.mouseDY = 0;
+    return { dx, dy };
+  }
+  lockPointer() { if (!this.pointerLocked) this.canvas.requestPointerLock(); }
+  unlockPointer() { if (document.pointerLockElement) document.exitPointerLock(); }
 }
