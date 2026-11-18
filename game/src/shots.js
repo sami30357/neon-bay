@@ -1,3 +1,4 @@
+// v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Deterministic screenshot staging for Neon Bay: ?shot=cover|chase|mission|street
 // skips the start screen and places the player, cars and police at fixed spots so
 // every screenshot is reproducible. Also used by the local screenshot script.

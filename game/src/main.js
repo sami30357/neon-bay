@@ -1,3 +1,4 @@
+// v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Neon Bay — the game itself: boot, loop, driving and on-foot play, car stealing,
 // combat, wanted heat, missions, saves, and deterministic screenshot staging.
 // v2: neon-orb side activity, police helicopter with rotor audio, screen shake and

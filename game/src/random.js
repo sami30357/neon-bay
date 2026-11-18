@@ -1,3 +1,4 @@
+// v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Seeded random numbers for Neon Bay: the city layout is deterministic, so every
 // run (and every screenshot) shows the same streets, buildings and neon signs.
 // v2 adds distinct picks, integer ranges and a bell-curve helper so the richer

@@ -1,3 +1,4 @@
+// v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Neon Bay's rain-slick night city: a street grid, towers with lit windows, neon
 // signs, wet asphalt, streetlights and rain. The layout is seeded, so every run
 // shows the same city. All textures are drawn on canvases at runtime — no files.

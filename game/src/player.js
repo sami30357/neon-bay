@@ -1,3 +1,4 @@
+// v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // The player on foot in Neon Bay: a third-person walker with sprint, punch and
 // pistol combat, and car entry. The camera orbits with the mouse (pointer lock).
 // v2: a visible pistol in the right hand that raises to aim when shooting, and a

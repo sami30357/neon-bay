@@ -1,3 +1,4 @@
+// v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Story missions for Neon Bay. Rook works for fixer Vex Marlowe across seven jobs:
 // drive, steal, fight, outrun the law, a tower finale, a night driving a cab, and
 // a five-star coronation run. Each job pays cash and unlocks the next. Objectives

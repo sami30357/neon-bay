@@ -1,3 +1,4 @@
+// v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Traffic and pedestrians for Neon Bay: cars cruise the street grid on lanes and
 // pedestrians stroll the sidewalks, fleeing when the player causes trouble.
 // v2: busier streets (20 cars, 36 pedestrians), pedestrian variety — heights,

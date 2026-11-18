@@ -1,3 +1,4 @@
+// v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Synthesized sound for Neon Bay: every sound is made with WebAudio oscillators and
 // filtered noise, so the game needs no audio files and works fully offline.
 // v2: a helicopter rotor thump when the PD chopper is up, a two-tone car horn,

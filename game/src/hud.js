@@ -1,3 +1,4 @@
+// v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // HUD for Neon Bay: cash, health, wanted stars, mission banner, message feed,
 // dialogue box, and a live 2D minimap drawn on a canvas (streets, buildings,
 // player, traffic, police and the mission marker).
