@@ -1,6 +1,13 @@
 // HUD for Neon Bay: cash, health, wanted stars, mission banner, message feed,
 // dialogue box, and a live 2D minimap drawn on a canvas (streets, buildings,
 // player, traffic, police and the mission marker).
+// v2: neon-orb counter, a big mission-intro card that flashes when a job starts,
+// a red damage vignette, and a minimap that also shows the police helicopter and
+// the remaining orbs.
+// v3: a dense top-1-style HUD — radio station + song, a big speedometer, a mission
+// panel with stage progress and NEXT step, a Bay PD response list with named units
+// and distances, a respect meter, and a canvas-drawn portrait of fixer Vex Marlowe
+// in the dialogue box.
 import { CITY_EXTENT, STREET_STEP } from './city.js';
 
 export class HUD {
@@ -12,16 +19,31 @@ export class HUD {
     this.starsEl = document.getElementById('wantedBox');
     this.missionTitleEl = document.getElementById('missionTitle');
     this.missionTextEl = document.getElementById('missionText');
+    this.missionStageEl = document.getElementById('missionStage');
+    this.missionNextEl = document.getElementById('missionNext');
     this.speedEl = document.getElementById('speed');
     this.modeEl = document.getElementById('modeLabel');
+    this.gearEl = document.getElementById('gearLabel');
     this.feedEl = document.getElementById('feed');
     this.dialogEl = document.getElementById('dialog');
     this.dialogWhoEl = document.getElementById('dialogWho');
     this.dialogTextEl = document.getElementById('dialogText');
     this.crosshairEl = document.getElementById('crosshair');
+    this.orbEl = document.getElementById('orbCount');
+    this.cardEl = document.getElementById('missionCard');
+    this.cardTitleEl = document.getElementById('missionCardTitle');
+    this.cardSubEl = document.getElementById('missionCardSub');
+    this.cardQuoteEl = document.getElementById('missionCardQuote');
+    this.vignetteEl = document.getElementById('damageVignette');
+    this.radioSongEl = document.getElementById('radioSong');
+    this.policeListEl = document.getElementById('policeList');
+    this.respectBarEl = document.getElementById('respectBar');
+    this.respectPctEl = document.getElementById('respectPct');
     this.mapCanvas = document.getElementById('minimap');
     this.mapCtx = this.mapCanvas.getContext('2d');
     this.feedLines = [];
+    this._cardTimer = 0;
+    this._drawVexPortrait();
   }
 
   show() { this.el.classList.add('on'); }
@@ -30,6 +52,7 @@ export class HUD {
   setCash(cash) { this.cashEl.textContent = cash.toLocaleString('en-US'); }
   setJob(label) { this.jobEl.textContent = label; }
   setHealth(hp) { this.healthEl.style.width = `${Math.max(0, Math.min(100, hp))}%`; }
+  setOrbs(n, total) { if (this.orbEl) this.orbEl.textContent = `${n}/${total}`; }
   setWanted(stars) {
     const spans = this.starsEl.querySelectorAll('[data-star]');
     spans.forEach((s) => {
@@ -37,15 +60,66 @@ export class HUD {
       s.classList.toggle('lit', n <= stars);
     });
   }
-  setMission(title, text) {
+  // mission panel: title, current objective, stage x/y and the NEXT step
+  setMission(title, text, stage = '', next = '') {
     this.missionTitleEl.textContent = title;
     this.missionTextEl.textContent = text;
+    if (this.missionStageEl) this.missionStageEl.textContent = stage;
+    if (this.missionNextEl) this.missionNextEl.textContent = next;
   }
   setSpeed(kmh, mode) {
-    this.speedEl.textContent = Math.round(Math.abs(kmh));
+    const v = Math.round(Math.abs(kmh));
+    this.speedEl.textContent = v;
     this.modeEl.textContent = mode;
+    if (this.gearEl) {
+      this.gearEl.textContent = mode === 'DRIVING'
+        ? (v < 1 ? '· PARK' : v < 60 ? '· GEAR 2' : v < 110 ? '· GEAR 3' : '· GEAR 4')
+        : '';
+    }
   }
   setCrosshair(on) { this.crosshairEl.style.display = on ? 'block' : 'none'; }
+  setRadio(song) { if (this.radioSongEl) this.radioSongEl.textContent = song; }
+  setRespect(pct) {
+    const p = Math.max(0, Math.min(100, Math.round(pct)));
+    if (this.respectBarEl) this.respectBarEl.style.width = `${p}%`;
+    if (this.respectPctEl) this.respectPctEl.textContent = `${p}%`;
+  }
+  // Bay PD response list: [{name, dist}] — named units with distances in metres
+  setPoliceList(units) {
+    if (!this.policeListEl) return;
+    if (!units || units.length === 0) {
+      this.policeListEl.innerHTML = '<div class="unit">No units responding</div>';
+      return;
+    }
+    this.policeListEl.innerHTML = units.slice(0, 4).map((u) =>
+      `<div class="unit"><b>${u.name}</b> — ${u.dist}</div>`).join('');
+  }
+
+  // big center card that announces a job (or a completion); holdMs keeps it up
+  // longer for screenshots; quote is Vex's line of dialogue under her name
+  showMissionCard(title, sub, holdMs = 3200, quote = '') {
+    if (!this.cardEl) return;
+    this.cardTitleEl.textContent = title;
+    this.cardSubEl.textContent = sub;
+    if (this.cardQuoteEl) {
+      this.cardQuoteEl.textContent = quote ? `“${quote}”` : '';
+      this.cardQuoteEl.style.display = quote ? 'block' : 'none';
+    }
+    this.cardEl.style.display = 'block';
+    this.cardEl.classList.remove('cardOut');
+    window.clearTimeout(this._cardTimer);
+    this._cardTimer = window.setTimeout(() => {
+      this.cardEl.classList.add('cardOut');
+      window.setTimeout(() => { this.cardEl.style.display = 'none'; }, 450);
+    }, holdMs);
+  }
+
+  // red flash at the screen edge when the player takes damage
+  flashDamage() {
+    if (!this.vignetteEl) return;
+    this.vignetteEl.style.opacity = '0.85';
+    window.setTimeout(() => { this.vignetteEl.style.opacity = '0'; }, 220);
+  }
 
   feed(text) {
     this.feedLines.push(text);
@@ -66,6 +140,58 @@ export class HUD {
     this.dialogEl.style.display = 'block';
   }
   hideDialog() { this.dialogEl.style.display = 'none'; }
+
+  // Vex Marlowe, drawn on a canvas at boot: neon-pink hair, shades, city glow.
+  // Drawn into the dialogue portrait (64px) and the mission-card portrait (48px).
+  _drawVexPortrait() {
+    const draw = (c, size) => {
+      if (!c) return;
+      const g = c.getContext('2d');
+      g.save();
+      g.scale(size / 64, size / 64);
+      this._paintVex(g);
+      g.restore();
+    };
+    draw(document.getElementById('vexPortrait'), 64);
+    draw(document.getElementById('missionCardPortrait'), 48);
+  }
+
+  _paintVex(g) {
+    g.fillStyle = '#0b0e1a'; g.fillRect(0, 0, 64, 64);
+    // city glow behind her
+    const grad = g.createLinearGradient(0, 0, 0, 64);
+    grad.addColorStop(0, '#3a0a3a'); grad.addColorStop(1, '#0b0e1a');
+    g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+    g.fillStyle = '#ff2d78';
+    for (let i = 0; i < 5; i++) g.fillRect(4 + i * 12, 44 + (i % 2) * 6, 4, 14);
+    // hair: neon-pink bob
+    g.fillStyle = '#ff2d78';
+    g.beginPath();
+    g.arc(32, 26, 19, Math.PI, 0);
+    g.fill();
+    g.fillRect(13, 24, 8, 26);
+    g.fillRect(43, 24, 8, 26);
+    // face
+    g.fillStyle = '#e8b98a';
+    g.beginPath();
+    g.arc(32, 32, 13, 0, Math.PI * 2);
+    g.fill();
+    // shades
+    g.fillStyle = '#0a0c12';
+    g.fillRect(19, 28, 11, 6);
+    g.fillRect(34, 28, 11, 6);
+    g.fillRect(29, 30, 6, 2);
+    // lips
+    g.fillStyle = '#ff2d78';
+    g.fillRect(27, 43, 10, 2);
+    // jacket collar
+    g.fillStyle = '#14204a';
+    g.beginPath();
+    g.moveTo(14, 64); g.lineTo(32, 48); g.lineTo(50, 64); g.closePath();
+    g.fill();
+    g.strokeStyle = '#00e5ff'; g.lineWidth = 1;
+    g.strokeRect(0.5, 0.5, 63, 63);
+  }
 
   // live minimap: north-up, city scaled to the canvas
   drawMinimap(view) {
@@ -99,6 +225,13 @@ export class HUD {
       ctx.strokeStyle = 'rgba(255,215,94,0.5)';
       ctx.beginPath(); ctx.arc(mx, my, 10 + Math.sin(performance.now() * 0.005) * 2, 0, Math.PI * 2); ctx.stroke();
     }
+    // remaining neon orbs
+    if (view.orbs) {
+      ctx.fillStyle = '#00e5ff';
+      for (const o of view.orbs) {
+        ctx.beginPath(); ctx.arc(toX(o.x), toY(o.z), 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
     // traffic
     ctx.fillStyle = '#9fb8d8';
     for (const c of view.traffic) {
@@ -109,6 +242,14 @@ export class HUD {
     ctx.fillStyle = flash ? '#ff2244' : '#3366ff';
     for (const p of view.police) {
       ctx.beginPath(); ctx.arc(toX(p.x), toY(p.z), 3.5, 0, Math.PI * 2); ctx.fill();
+    }
+    // police helicopter: a bigger ringed marker so it stands out
+    if (view.heli) {
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(toX(view.heli.x), toY(view.heli.z), 6, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = flash ? '#ff2244' : '#3366ff';
+      ctx.beginPath(); ctx.arc(toX(view.heli.x), toY(view.heli.z), 3, 0, Math.PI * 2); ctx.fill();
     }
     // player arrow
     const px = toX(view.player.x), py = toY(view.player.z);

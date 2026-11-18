@@ -1,5 +1,7 @@
 // The player on foot in Neon Bay: a third-person walker with sprint, punch and
 // pistol combat, and car entry. The camera orbits with the mouse (pointer lock).
+// v2: a visible pistol in the right hand that raises to aim when shooting, and a
+// forward sprint lean so running reads at a glance.
 import * as THREE from 'three';
 
 export class Player {
@@ -29,6 +31,17 @@ export class Player {
     this.armL = this.armR.clone();
     this.armL.position.x = -0.48;
     this.group.add(this.armL);
+    // pistol in the right hand: barrel + grip, raised to aim when firing
+    const gunMat = new THREE.MeshStandardMaterial({ color: 0x1a1d26, roughness: 0.35, metalness: 0.8 });
+    this.gun = new THREE.Group();
+    const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.42), gunMat);
+    barrel.position.set(0, 0, 0.18);
+    this.gun.add(barrel);
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.22, 0.1), gunMat);
+    grip.position.set(0, -0.12, -0.02);
+    this.gun.add(grip);
+    this.gun.position.set(0.48, 1.12, 0.1);
+    this.group.add(this.gun);
     this.group.position.set(0, 0, 24);
     this.scene.add(this.group);
 
@@ -43,6 +56,8 @@ export class Player {
     this.shootCooldown = 0;
     this.muzzle = null;
     this.stepPhase = 0;
+    this.aimTimer = 0;
+    this.sprinting = false;
   }
 
   get position() { return this.group.position; }
@@ -50,6 +65,7 @@ export class Player {
   update(dt, input, city) {
     this.punchCooldown = Math.max(0, this.punchCooldown - dt);
     this.shootCooldown = Math.max(0, this.shootCooldown - dt);
+    this.aimTimer = Math.max(0, this.aimTimer - dt);
     const mouse = input.consumeMouse();
     this.camYaw -= mouse.dx * 0.0032;
     this.camPitch = Math.max(-0.15, Math.min(0.85, this.camPitch + mouse.dy * 0.0024));
@@ -61,6 +77,7 @@ export class Player {
     let mx = (sin * fwd + cos * strafe);
     let mz = (cos * fwd - sin * strafe);
     const len = Math.hypot(mx, mz);
+    this.sprinting = running && len > 0.01;
     if (len > 0.01) {
       mx /= len; mz /= len;
       let nx = this.group.position.x + mx * speed * dt;
@@ -80,6 +97,18 @@ export class Player {
       this.legR.rotation.x *= 0.8;
       this.armL.rotation.x *= 0.8;
       this.armR.rotation.x *= 0.8;
+    }
+    // sprint lean: the whole body tips forward while running
+    const leanTarget = this.sprinting ? 0.14 : 0;
+    this.group.rotation.x += (leanTarget - this.group.rotation.x) * Math.min(1, dt * 8);
+    // aim pose: right arm + pistol lift forward briefly after each shot
+    if (this.aimTimer > 0) {
+      this.armR.rotation.x = -1.35;
+      this.gun.rotation.x = -1.35;
+      this.gun.position.set(0.48, 1.5, 0.3);
+    } else {
+      this.gun.rotation.x = 0;
+      this.gun.position.set(0.48, 1.12, 0.1);
     }
     this.group.rotation.y = this.yaw;
   }
@@ -104,6 +133,7 @@ export class Player {
   shoot() {
     if (this.shootCooldown > 0) return null;
     this.shootCooldown = 0.32;
+    this.aimTimer = 0.35;
     // ray from the camera through the crosshair
     return { origin: this.group.position.clone().add(new THREE.Vector3(0, 1.6, 0)), dir: new THREE.Vector3(Math.sin(this.yaw), -0.02, Math.cos(this.yaw)) };
   }

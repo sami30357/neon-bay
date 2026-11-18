@@ -1,5 +1,7 @@
 // Synthesized sound for Neon Bay: every sound is made with WebAudio oscillators and
 // filtered noise, so the game needs no audio files and works fully offline.
+// v2: a helicopter rotor thump when the PD chopper is up, a two-tone car horn,
+// a rising orb chime, and a four-note fanfare when a job pays out.
 export class AudioEngine {
   constructor() {
     this.ctx = null;
@@ -13,6 +15,13 @@ export class AudioEngine {
     this.sirenGain = null;
     this.sirenTimer = 0;
     this.rainGain = null;
+    this.rotorOsc = null;
+    this.rotorGain = null;
+    this.rotorFilter = null;
+    this.musicTimer = 0;
+    this.musicStep = 0;
+    // WAVE 88.1: a quiet synthwave bassline (A minor), one note per step
+    this.musicPattern = [110, 0, 130.81, 0, 164.81, 0, 196, 164.81];
     this.started = false;
   }
 
@@ -26,6 +35,7 @@ export class AudioEngine {
       this.master.connect(this.ctx.destination);
       this._buildEngine();
       this._buildRain();
+      this._buildRotor();
       this.started = true;
     } catch (err) {
       this.started = false;
@@ -85,6 +95,45 @@ export class AudioEngine {
     src.start();
   }
 
+  _buildRotor() {
+    // helicopter: a low thumping sawtooth through a slow wobble, silent until used
+    const ctx = this.ctx;
+    this.rotorOsc = ctx.createOscillator();
+    this.rotorOsc.type = 'sawtooth';
+    this.rotorOsc.frequency.value = 42;
+    this.rotorFilter = ctx.createBiquadFilter();
+    this.rotorFilter.type = 'lowpass';
+    this.rotorFilter.frequency.value = 240;
+    this.rotorGain = ctx.createGain();
+    this.rotorGain.gain.value = 0;
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 13;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.02;
+    lfo.connect(lfoGain); lfoGain.connect(this.rotorGain.gain);
+    this.rotorOsc.connect(this.rotorFilter);
+    this.rotorFilter.connect(this.rotorGain);
+    this.rotorGain.connect(this.master);
+    this.rotorOsc.start(); lfo.start();
+  }
+
+  updateRotor(active) {
+    if (!this.ctx || !this.rotorGain) return;
+    this.rotorGain.gain.setTargetAtTime(active ? 0.05 : 0, this.ctx.currentTime, 0.3);
+  }
+
+  // radio music: a quiet looping bassline under the rain and engine
+  updateMusic(dt) {
+    if (!this.ctx) return;
+    this.musicTimer += dt;
+    if (this.musicTimer < 0.3) return;
+    this.musicTimer = 0;
+    const freq = this.musicPattern[this.musicStep % this.musicPattern.length];
+    this.musicStep += 1;
+    if (freq > 0) this._blip(freq, 0.28, 'triangle', 0.045);
+  }
+
   _blip(freq, dur, type, vol, when = 0) {
     if (!this.ctx) return;
     const t = this.ctx.currentTime + when;
@@ -116,6 +165,9 @@ export class AudioEngine {
   punch() { this._noiseBurst(0.09, 0.35, 300); }
   cash() { this._blip(880, 0.09, 'sine', 0.22); this._blip(1320, 0.14, 'sine', 0.22, 0.09); }
   pickup() { this._blip(660, 0.08, 'triangle', 0.2); this._blip(990, 0.1, 'triangle', 0.2, 0.07); }
+  orb() { this._blip(1046, 0.09, 'sine', 0.22); this._blip(1318, 0.09, 'sine', 0.22, 0.07); this._blip(1568, 0.16, 'sine', 0.22, 0.14); }
+  fanfare() { this._blip(523, 0.12, 'triangle', 0.22); this._blip(659, 0.12, 'triangle', 0.22, 0.1); this._blip(784, 0.12, 'triangle', 0.22, 0.2); this._blip(1046, 0.22, 'triangle', 0.24, 0.3); }
+  horn() { this._blip(370, 0.28, 'square', 0.16); this._blip(466, 0.28, 'square', 0.16); }
   denied() { this._blip(180, 0.16, 'square', 0.18); }
   click() { this._blip(1200, 0.05, 'sine', 0.15); }
   crash() { this._noiseBurst(0.3, 0.5, 500); }

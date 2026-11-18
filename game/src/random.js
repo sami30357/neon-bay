@@ -1,5 +1,7 @@
 // Seeded random numbers for Neon Bay: the city layout is deterministic, so every
 // run (and every screenshot) shows the same streets, buildings and neon signs.
+// v2 adds distinct picks, integer ranges and a bell-curve helper so the richer
+// city (signs, props, pedestrians, orbs) can draw varied but repeatable values.
 export function mulberry32(seed) {
   let a = seed >>> 0;
   return function random() {
@@ -18,6 +20,27 @@ export function makeRng(seed) {
     int(min, max) { return Math.floor(min + next() * (max - min + 1)); },
     pick(list) { return list[Math.floor(next() * list.length)]; },
     chance(p) { return next() < p; },
+    // N distinct entries from a list, in random order (no repeats).
+    pickN(list, n) {
+      const copy = list.slice();
+      const out = [];
+      while (copy.length > 0 && out.length < n) {
+        out.push(copy.splice(Math.floor(next() * copy.length), 1)[0]);
+      }
+      return out;
+    },
+    // integer in [min, max)
+    rangeInt(min, max) { return min + Math.floor(next() * (max - min)); },
+    // bell-curve-ish value centred on 0.5 (sum of three draws, clamped)
+    bell() { return Math.max(0, Math.min(1, (next() + next() + next()) / 3)); },
+    // pick from [value, weight] pairs
+    weighted(pairs) {
+      let total = 0;
+      for (const [, w] of pairs) total += w;
+      let roll = next() * total;
+      for (const [v, w] of pairs) { roll -= w; if (roll <= 0) return v; }
+      return pairs[pairs.length - 1][0];
+    },
   };
 }
 

@@ -3,12 +3,17 @@
 // modules, three.js vendored under game/vendor/, no network request), and the program hands
 // it in. It copies game/ and screenshots/ from beside this file to /output and writes
 // /output/dossier.json, the summary the judge reads, with the vendored make.fun library.
-// NEON BAY: a rain-slick neon metropolis at night — an original open-world crime game
-// (city on foot and by car, traffic, pedestrians, car stealing, wanted level and police,
-// five story missions, combat, HUD with live minimap, start screen, save, synthesized
-// sound). Build your own open-world crime game in its place (three.js or any library you
-// vendor under game/), put your 3 or 4 PNG or JPEG screenshots in screenshots/ (the first
-// by name is the cover) and run it.
+// NEON BAY v2: a rain-slick neon metropolis at night — an original open-world crime
+// game (city on foot and by car, traffic, pedestrians, car stealing, wanted level
+// and police with a searchlight helicopter at 4+ stars, seven story missions, a
+// neon-orb side activity, combat, HUD with live minimap, start screen, save,
+// synthesized sound). v2 makes the city richer: landmark towers with helipads and
+// blinking beacons, twice the neon signs (some flicker), street props, a starry sky
+// with moon and drifting clouds, rain streaks with ground splashes, puddles, taxi
+// and van traffic, umbrellas in the rain, mission intro cards, crash smoke and
+// screen shake. Build your own open-world crime game in its place (three.js or any
+// library you vendor under game/), put your 3 or 4 PNG or JPEG screenshots in
+// screenshots/ (the first by name is the cover) and run it.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:

@@ -1,7 +1,7 @@
-// Story missions for Neon Bay. Rook works for fixer Vex Marlowe across five jobs:
-// drive, steal, fight, outrun the law, and a finale at Meridian Tower. Each job
-// pays cash and unlocks the next. Objectives show as a 3D beacon, a minimap
-// marker and HUD text.
+// Story missions for Neon Bay. Rook works for fixer Vex Marlowe across seven jobs:
+// drive, steal, fight, outrun the law, a tower finale, a night driving a cab, and
+// a five-star coronation run. Each job pays cash and unlocks the next. Objectives
+// show as a 3D beacon, a minimap marker and HUD text.
 import * as THREE from 'three';
 import { makeRng } from './random.js';
 
@@ -56,12 +56,36 @@ export const MISSIONS = [
       { text: 'Escape to Vex at the pier — wanted or not', target: { x: -168, z: 168 }, radius: 6, kind: 'drive' },
     ],
   },
+  {
+    id: 6, title: 'CAB CALL',
+    intro: 'Vex: The cab company lost every driver tonight — the rain, the cops, the usual. Take the yellow cab, Rook, and run three fares across the bay. Keep the meter running and the passengers smiling. $700.',
+    reward: 700,
+    steps: [
+      { text: 'Pick up fare 1 outside Club Volt', target: { x: 72, z: 72 }, radius: 6, kind: 'drive' },
+      { text: 'Drop fare 1 at Hotel Lumen', target: { x: -120, z: -120 }, radius: 6, kind: 'drive' },
+      { text: 'Pick up fare 2 at the casino', target: { x: 168, z: -72 }, radius: 6, kind: 'drive' },
+      { text: 'Drop fare 2 at Pier 9', target: { x: -168, z: 120 }, radius: 6, kind: 'drive' },
+      { text: 'Pick up fare 3 on Neon Row', target: { x: 120, z: 168 }, radius: 6, kind: 'drive' },
+      { text: 'Drop fare 3 at Meridian Tower', target: { x: -24, z: -72 }, radius: 6, kind: 'drive' },
+    ],
+  },
+  {
+    id: 7, title: 'KING OF THE BAY',
+    intro: 'Vex: One last run, Rook — the whole PD will be on you, helicopter and all. Three checkpoints, five stars of heat, and then lose them all. Do this and the city is yours. $2,500.',
+    reward: 2500,
+    steps: [
+      { text: 'Hit checkpoint 1 — the old pier road (5 stars!)', target: { x: 24, z: -168 }, radius: 6, kind: 'drive' },
+      { text: 'Hit checkpoint 2 — Meridian Crossing', target: { x: -120, z: 24 }, radius: 6, kind: 'drive' },
+      { text: 'Hit checkpoint 3 — Neon Row', target: { x: 168, z: 120 }, radius: 6, kind: 'drive' },
+      { text: 'Lose the cops AND the helicopter — wanted level to zero', target: null, radius: 0, kind: 'escape' },
+    ],
+  },
 ];
 
 export class Missions {
   constructor(scene) {
     this.scene = scene;
-    this.completed = 0; // index of next mission (0..5)
+    this.completed = 0; // index of next mission (0..7)
     this.active = null; // {def, stepIndex, fightLeft, ...}
     this.beacon = null;
     this.marker = null;

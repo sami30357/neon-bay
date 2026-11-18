@@ -14,32 +14,63 @@
   .panel { background: rgba(5, 8, 20, 0.62); border: 1px solid rgba(0, 229, 255, 0.35); border-radius: 8px; padding: 8px 12px; text-shadow: 0 0 6px rgba(0,229,255,.6); }
   #cashBox { position: absolute; top: 12px; left: 12px; font-size: 20px; font-weight: 700; }
   #cashBox small { display: block; font-size: 11px; color: #8fd8ff; font-weight: 400; letter-spacing: 1px; }
+  #orbBox { margin-top: 4px; font-size: 12px; color: #7df9ff; letter-spacing: 1px; }
   #healthBarWrap { width: 180px; height: 10px; background: rgba(255,255,255,.15); border-radius: 5px; margin-top: 6px; overflow: hidden; }
   #healthBar { height: 100%; width: 100%; background: linear-gradient(90deg, #ff2d78, #ff7a3d); }
   #wantedBox { position: absolute; top: 12px; right: 12px; font-size: 26px; letter-spacing: 4px; color: #2b3a55; }
   #wantedBox .lit { color: #ffe14d; text-shadow: 0 0 12px #ffae00, 0 0 22px #ff5e00; }
+  #radioBox { position: absolute; top: 74px; right: 12px; font-size: 12px; text-align: right; line-height: 1.5; }
+  #radioBox .station { color: #ff5ec4; font-weight: 700; letter-spacing: 2px; }
+  #radioBox .song { color: #eaf6ff; }
   #speedBox { position: absolute; bottom: 12px; left: 12px; font-size: 15px; }
-  #speedBox b { font-size: 26px; }
+  #speedBox b { font-size: 46px; line-height: 1; }
+  #speedBox .unit { font-size: 12px; color: #8fd8ff; letter-spacing: 2px; }
+  #speedBox .gear { font-size: 12px; color: #ffd75e; letter-spacing: 1px; }
+  #policeBox { position: absolute; left: 12px; top: 148px; font-size: 12px; line-height: 1.7; min-width: 168px; }
+  #policeBox .pTitle { color: #ff5e5e; font-weight: 700; letter-spacing: 2px; font-size: 11px; }
+  #policeBox .unit { color: #cfe8ff; }
+  #policeBox .unit b { color: #fff; }
+  #respectBox { margin-top: 6px; }
+  #respectBox .rLabel { font-size: 11px; color: #ffd75e; letter-spacing: 2px; }
+  #respectBarWrap { width: 180px; height: 8px; background: rgba(255,255,255,.15); border-radius: 4px; margin-top: 3px; overflow: hidden; }
+  #respectBar { height: 100%; width: 0%; background: linear-gradient(90deg, #00e5ff, #b300ff); }
   #minimapWrap { position: absolute; right: 12px; bottom: 12px; border: 1px solid rgba(0,229,255,.5); border-radius: 8px; overflow: hidden; box-shadow: 0 0 18px rgba(0,229,255,.35); }
   #minimap { display: block; background: #070b18; }
   #missionBox { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); max-width: 46%; text-align: center; font-size: 15px; }
   #missionBox b { color: #ffd75e; }
+  #missionStage { font-size: 11px; color: #8fd8ff; letter-spacing: 2px; margin-top: 2px; }
+  #missionNext { font-size: 12px; color: #b8ffce; margin-top: 2px; }
   #feed { position: absolute; left: 12px; bottom: 86px; font-size: 13px; line-height: 1.5; }
   #feed div { opacity: .95; }
   #dialog { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); width: 560px; max-width: 86vw; display: none; }
   #dialog .who { color: #ff5ec4; font-weight: 700; letter-spacing: 1px; }
   #dialog .text { margin-top: 4px; font-size: 15px; line-height: 1.45; }
   #dialog .hint { margin-top: 6px; font-size: 12px; color: #8fd8ff; }
+  #dialogBody { display: flex; gap: 12px; align-items: flex-start; text-align: left; }
+  #vexPortrait { width: 64px; height: 64px; flex: none; border-radius: 8px; border: 1px solid rgba(255, 94, 196, 0.6); box-shadow: 0 0 12px rgba(255, 45, 120, 0.45); }
   #crosshair { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; display: none; }
   #crosshair:before, #crosshair:after { content: ""; position: absolute; background: #fff; box-shadow: 0 0 6px #0ff; }
   #crosshair:before { left: 8px; top: 0; width: 2px; height: 18px; }
   #crosshair:after { left: 0; top: 8px; width: 18px; height: 2px; }
+  /* mission intro card: big center flash when a job starts or pays out */
+  #missionCard { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%); text-align: center; display: none; pointer-events: none; transition: opacity .45s ease; }
+  #missionCard.cardOut { opacity: 0; }
+  #missionCardInner { display: flex; gap: 12px; align-items: center; justify-content: center; }
+  #missionCardPortrait { width: 48px; height: 48px; flex: none; border-radius: 8px; border: 1px solid rgba(255, 94, 196, 0.6); box-shadow: 0 0 12px rgba(255, 45, 120, 0.45); }
+  #missionCardTitle { font-size: 44px; font-weight: 900; letter-spacing: 6px; color: #ffd75e; text-shadow: 0 0 12px #ffae00, 0 0 34px #ff5e00; }
+  #missionCardSub { margin-top: 4px; font-size: 16px; color: #eaf6ff; text-shadow: 0 0 8px rgba(0,229,255,.7); }
+  #missionCardFrom { margin-top: 2px; font-size: 11px; color: #ff5ec4; letter-spacing: 2px; }
+  #missionCardQuote { margin-top: 4px; font-size: 13px; font-style: italic; color: #eaf6ff; max-width: 430px; line-height: 1.35; }
+  /* red edge flash when the player is hurt */
+  #damageVignette { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0; transition: opacity .3s ease; background: radial-gradient(ellipse at center, transparent 52%, rgba(255, 20, 40, 0.55) 100%); }
   /* ---------- Screens ---------- */
   .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; z-index: 10; font-family: "Segoe UI", Arial, sans-serif; color: #eaf6ff; text-align: center; background: radial-gradient(ellipse at 50% 30%, rgba(64, 12, 92, .88), rgba(3, 4, 12, .96) 70%); }
   .screen h1 { margin: 0; font-size: 74px; letter-spacing: 10px; font-weight: 900; color: #fff; text-shadow: 0 0 8px #ff2d78, 0 0 30px #ff2d78, 0 0 60px #b300ff; }
   .screen h1 .bay { color: #7df9ff; text-shadow: 0 0 8px #00e5ff, 0 0 30px #00e5ff, 0 0 60px #0088ff; }
   .screen .tag { margin-top: 6px; font-size: 15px; letter-spacing: 4px; color: #ffb3d1; }
   .screen .story { max-width: 620px; margin: 22px 0 6px; font-size: 15px; line-height: 1.6; color: #cfe8ff; }
+  .screen .joblist { margin: 10px 0 2px; font-size: 13px; line-height: 1.8; color: #9fc6e8; }
+  .screen .joblist b { color: #ffd75e; }
   .screen .controls { margin: 14px 0; font-size: 13px; line-height: 1.9; color: #9fc6e8; }
   .screen .controls b { color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); border-radius: 4px; padding: 1px 7px; font-weight: 600; }
   .btn { pointer-events: auto; cursor: pointer; margin: 6px; padding: 12px 34px; font-size: 17px; font-weight: 700; letter-spacing: 2px; color: #04121a; background: linear-gradient(90deg, #00e5ff, #ff2d78); border: none; border-radius: 8px; box-shadow: 0 0 22px rgba(0,229,255,.55); }
@@ -48,6 +79,7 @@
   #pauseScreen h1, #endScreen h1 { font-size: 44px; }
   #endTitle { font-size: 44px; }
   #saveNote { margin-top: 10px; font-size: 12px; color: #7fa8c9; }
+  #jobProgress { margin-top: 8px; font-size: 14px; color: #ffd75e; letter-spacing: 1px; }
 </style>
 </head>
 <body>
@@ -55,25 +87,33 @@
 <p id="status" role="status" aria-live="polite"></p>
 
 <div id="hud">
-  <div id="cashBox" class="panel">$<span id="cash">0</span><small>NEON BAY &middot; <span id="jobLabel">FREE ROAM</span></small><div id="healthBarWrap"><div id="healthBar"></div></div></div>
+  <div id="cashBox" class="panel">$<span id="cash">0</span><small>NEON BAY &middot; <span id="jobLabel">FREE ROAM</span></small><div id="orbBox">NEON ORBS <span id="orbCount">0/12</span></div><div id="healthBarWrap"><div id="healthBar"></div></div><div id="respectBox"><div class="rLabel">RESPECT <span id="respectPct">0%</span></div><div id="respectBarWrap"><div id="respectBar"></div></div></div></div>
   <div id="wantedBox" class="panel"><span data-star="1">&#9733;</span><span data-star="2">&#9733;</span><span data-star="3">&#9733;</span><span data-star="4">&#9733;</span><span data-star="5">&#9733;</span></div>
-  <div id="missionBox" class="panel"><b id="missionTitle">FREE ROAM</b><div id="missionText">Explore Neon Bay. Steal a car with E. Missions come from Vex.</div></div>
-  <div id="speedBox" class="panel"><b id="speed">0</b> km/h &middot; <span id="modeLabel">ON FOOT</span></div>
+  <div id="radioBox" class="panel"><div class="station">WAVE 88.1</div><div class="song" id="radioSong">Neon Drive — Midnight Mirage</div></div>
+  <div id="policeBox" class="panel"><div class="pTitle">BAY PD RESPONSE</div><div id="policeList"><div class="unit">No units responding</div></div></div>
+  <div id="missionBox" class="panel"><b id="missionTitle">FREE ROAM</b><div id="missionText">Explore Neon Bay. Steal a car with E. Missions come from Vex.</div><div id="missionStage"></div><div id="missionNext"></div></div>
+  <div id="speedBox" class="panel"><b id="speed">0</b> <span class="unit">KM/H</span> &middot; <span id="modeLabel">ON FOOT</span> <span class="gear" id="gearLabel"></span></div>
   <div id="minimapWrap"><canvas id="minimap" width="190" height="190"></canvas></div>
   <div id="feed"></div>
-  <div id="dialog" class="panel"><div class="who" id="dialogWho">VEX</div><div class="text" id="dialogText"></div><div class="hint">ENTER to continue</div></div>
+  <div id="dialog" class="panel"><div id="dialogBody"><canvas id="vexPortrait" width="64" height="64"></canvas><div><div class="who" id="dialogWho">VEX</div><div class="text" id="dialogText"></div><div class="hint">ENTER to continue</div></div></div></div>
   <div id="crosshair"></div>
+  <div id="missionCard"><div id="missionCardInner"><canvas id="missionCardPortrait" width="48" height="48"></canvas><div><div id="missionCardTitle">JOB 1</div><div id="missionCardSub">NEON RUN</div><div id="missionCardFrom">VEX MARLOWE</div><div id="missionCardQuote"></div></div></div></div>
 </div>
+<div id="damageVignette"></div>
 
 <div id="startScreen" class="screen">
   <h1>NEON <span class="bay">BAY</span></h1>
-  <div class="tag">A RAIN-SLICK OPEN-WORLD CRIME GAME</div>
+  <div class="tag">A RAIN-SLICK OPEN-WORLD CRIME GAME &middot; 7 JOBS &middot; 12 NEON ORBS</div>
   <div class="story">Rain on neon. You are <b>Rook</b>, a driver with no past and one fast car-shaped future.
-  Fixer <b>Vex Marlowe</b> has five jobs for you across the wet streets of Neon Bay — steal, deliver,
-  fight, outrun the Bay PD. Earn the cash. Don't get caught.</div>
+  Fixer <b>Vex Marlowe</b> has seven jobs for you across the wet streets of Neon Bay — steal, deliver,
+  fight, outrun the Bay PD and its helicopter. Earn the cash. Don't get caught.</div>
+  <div class="joblist">
+    <b>1</b> NEON RUN &middot; <b>2</b> HOT WHEELS &middot; <b>3</b> RAIN CHECK &middot; <b>4</b> BLACKOUT<br>
+    <b>5</b> THE LAST LIGHT &middot; <b>6</b> CAB CALL &middot; <b>7</b> KING OF THE BAY
+  </div>
   <div class="controls">
     <b>W A S D</b> move / drive &nbsp; <b>Mouse</b> look &nbsp; <b>Shift</b> sprint &nbsp; <b>E</b> enter / steal car &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot<br>
-    <b>Space</b> handbrake &nbsp; <b>R</b> reset car &nbsp; <b>Enter</b> accept job &nbsp; <b>M</b> mute &nbsp; <b>Esc</b> pause
+    <b>Space</b> handbrake &nbsp; <b>H</b> horn &nbsp; <b>R</b> reset car &nbsp; <b>Enter</b> accept job &nbsp; <b>M</b> mute &nbsp; <b>Esc</b> pause
   </div>
   <div><button class="btn" id="startBtn">START ENGINE</button><button class="btn ghost" id="continueBtn">CONTINUE</button></div>
   <div id="saveNote">Progress saves automatically after every job. Sound starts when you press START.</div>
@@ -82,8 +122,9 @@
 <div id="pauseScreen" class="screen">
   <h1>PAUSED</h1>
   <div class="story">The rain keeps falling. The city waits.</div>
+  <div id="jobProgress">Jobs done: 0 / 7</div>
   <div><button class="btn" id="resumeBtn">RESUME</button><button class="btn ghost" id="saveBtn">SAVE GAME</button><button class="btn ghost" id="restartBtn">RESTART NIGHT</button></div>
-  <div class="controls"><b>W A S D</b> move / drive &nbsp; <b>E</b> enter car &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot &nbsp; <b>Space</b> handbrake &nbsp; <b>M</b> mute</div>
+  <div class="controls"><b>W A S D</b> move / drive &nbsp; <b>E</b> enter car &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot &nbsp; <b>Space</b> handbrake &nbsp; <b>H</b> horn &nbsp; <b>M</b> mute</div>
 </div>
 
 <div id="endScreen" class="screen">

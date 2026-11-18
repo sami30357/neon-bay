@@ -1,5 +1,8 @@
 // Traffic and pedestrians for Neon Bay: cars cruise the street grid on lanes and
 // pedestrians stroll the sidewalks, fleeing when the player causes trouble.
+// v2: busier streets (20 cars, 36 pedestrians), pedestrian variety — heights,
+// skin tones, hats, and umbrellas in the rain — working brake lights, and a horn
+// that scatters nearby pedestrians.
 import * as THREE from 'three';
 import { makeRng } from './random.js';
 import { makeRngCar } from './cars.js';
@@ -12,8 +15,8 @@ export class TrafficSystem {
     this.rng = makeRng(rngSeed);
     this.cars = [];
     this.peds = [];
-    this._spawnCars(14);
-    this._spawnPeds(22);
+    this._spawnCars(20);
+    this._spawnPeds(36);
   }
 
   _randomStreet() {
@@ -41,16 +44,37 @@ export class TrafficSystem {
   }
 
   _spawnPeds(count) {
-    const pedColors = [0xffd75e, 0x7df9ff, 0xff9ad5, 0xb8ffce, 0xe8e8f0, 0xff8a5c];
+    const pedColors = [0xffd75e, 0x7df9ff, 0xff9ad5, 0xb8ffce, 0xe8e8f0, 0xff8a5c, 0xff5e3a, 0x9d7bff];
+    const skinTones = [0xd9a986, 0x8a5a3b, 0xf0c8a0, 0x6b4423, 0xe8b98a];
+    const umbrellaColors = [0xff2d78, 0x00e5ff, 0xffae00, 0x39ff88, 0xb300ff];
     for (let i = 0; i < count; i++) {
       const group = new THREE.Group();
+      const height = this.rng.range(0.88, 1.14);
       const bodyMat = new THREE.MeshStandardMaterial({ color: this.rng.pick(pedColors), roughness: 0.8 });
       const body = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.4, 1.15, 8), bodyMat);
       body.position.y = 1.15;
       group.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), new THREE.MeshStandardMaterial({ color: 0xd9a986, roughness: 0.7 }));
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), new THREE.MeshStandardMaterial({ color: this.rng.pick(skinTones), roughness: 0.7 }));
       head.position.y = 1.95;
       group.add(head);
+      // a hat on some, an umbrella over some — it is raining, after all
+      if (this.rng.chance(0.22)) {
+        const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.14, 10), new THREE.MeshStandardMaterial({ color: this.rng.pick([0x222633, 0x7a1f2b, 0x1f4d6b]), roughness: 0.85 }));
+        hat.position.y = 2.14;
+        group.add(hat);
+      }
+      let umbrella = null;
+      if (this.rng.chance(0.3)) {
+        umbrella = new THREE.Mesh(
+          new THREE.ConeGeometry(0.85, 0.45, 12, 1, true),
+          new THREE.MeshStandardMaterial({ color: this.rng.pick(umbrellaColors), roughness: 0.5, side: THREE.DoubleSide }),
+        );
+        umbrella.position.y = 2.55;
+        group.add(umbrella);
+        const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 6), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+        stick.position.y = 2.2;
+        group.add(stick);
+      }
       const legMat = new THREE.MeshStandardMaterial({ color: 0x1a1e2e, roughness: 0.9 });
       const legL = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.6, 0.16), legMat);
       legL.position.set(-0.12, 0.3, 0);
@@ -58,6 +82,7 @@ export class TrafficSystem {
       const legR = legL.clone();
       legR.position.x = 0.12;
       group.add(legR);
+      group.scale.setScalar(height);
       const x = this._randomStreet() + (this.rng.chance(0.5) ? 1 : -1) * (STREET_HALF + 1.6);
       const z = this.rng.range(-CITY_EXTENT, CITY_EXTENT);
       group.position.set(x, 0, z);
@@ -69,6 +94,7 @@ export class TrafficSystem {
         target: null, fleeing: false, fleeTimer: 0,
         fallen: false, fallTimer: 0, alive: true,
         phase: this.rng.range(0, Math.PI * 2),
+        umbrella, legL, legR,
       });
     }
   }
@@ -80,7 +106,11 @@ export class TrafficSystem {
 
   _updateCars(dt, playerPos) {
     for (const car of this.cars) {
-      if (car.stopTimer > 0) { car.stopTimer -= dt; continue; }
+      if (car.stopTimer > 0) {
+        car.stopTimer -= dt;
+        if (car.mesh.userData.setBraking) car.mesh.userData.setBraking(true);
+        continue;
+      }
       // slow down for the car ahead on the same lane
       let blocked = false;
       for (const other of this.cars) {
@@ -89,6 +119,7 @@ export class TrafficSystem {
         const forward = car.horizontal ? Math.sin(car.heading) : Math.cos(car.heading);
         if (along * forward > 0 && along * forward < 9) { blocked = true; break; }
       }
+      if (car.mesh.userData.setBraking) car.mesh.userData.setBraking(blocked);
       const speed = blocked ? 0 : car.speed;
       const fx = Math.sin(car.heading), fz = Math.cos(car.heading);
       let nx = car.mesh.position.x + fx * speed * dt;
@@ -110,8 +141,6 @@ export class TrafficSystem {
       car.mesh.position.x = nx;
       car.mesh.position.z = nz;
       car.mesh.rotation.y = car.heading;
-      // brake lights when blocked
-      car.mesh.traverse((o) => { if (o.isMesh && o.material && o.material.color && o.material.color.getHex && o.name === '') {} });
     }
   }
 
@@ -149,14 +178,27 @@ export class TrafficSystem {
           if (Math.abs(ped.mesh.position.x) > CITY_EXTENT + 8) ped.dirZ *= -1;
         }
         ped.mesh.rotation.y = ped.alongStreet ? (ped.dirZ > 0 ? 0 : Math.PI) : (ped.dirZ > 0 ? Math.PI / 2 : -Math.PI / 2);
-        // leg swing
+        // leg swing (legs are stored on the record: hats/umbrellas shift children)
         const swing = Math.sin(time * 7 + ped.phase) * 0.5;
-        ped.mesh.children[2].rotation.x = swing;
-        ped.mesh.children[3].rotation.x = -swing;
+        if (ped.legL) ped.legL.rotation.x = swing;
+        if (ped.legR) ped.legR.rotation.x = -swing;
       }
       const fixed = this.city.resolveCircle(ped.mesh.position.x, ped.mesh.position.z, 0.5);
       ped.mesh.position.x = fixed.x;
       ped.mesh.position.z = fixed.z;
+    }
+  }
+
+  // horn: nearby pedestrians scatter, nearby drivers pause for a beat
+  honkFlee(x, z) {
+    for (const ped of this.peds) {
+      if (!ped.alive || ped.fallen) continue;
+      const d = Math.hypot(ped.mesh.position.x - x, ped.mesh.position.z - z);
+      if (d < 12) { ped.fleeing = true; ped.fleeTimer = 3; }
+    }
+    for (const car of this.cars) {
+      const d = Math.hypot(car.mesh.position.x - x, car.mesh.position.z - z);
+      if (d < 10 && car.stopTimer <= 0) car.stopTimer = 1.2;
     }
   }
 

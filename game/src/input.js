@@ -1,5 +1,7 @@
 // Keyboard and mouse input for Neon Bay. Keys are tracked by code so the layout
 // never depends on the player's keyboard language. Mouse look uses pointer lock.
+// v2: arrow keys alias WASD (so driving works with either hand), and a key
+// press is also reported with its repeat state for held actions.
 export class Input {
   constructor(canvas) {
     this.keys = new Set();
@@ -11,15 +13,26 @@ export class Input {
     this.onKey = null; // (code) => void, for one-shot actions
     this.onMouseDown = null; // () => void, for shooting
 
+    // arrow keys drive the same actions as WASD
+    this._aliases = {
+      ArrowUp: 'KeyW', ArrowDown: 'KeyS', ArrowLeft: 'KeyA', ArrowRight: 'KeyD',
+    };
+
     window.addEventListener('keydown', (event) => {
       if (event.repeat) return;
       this.keys.add(event.code);
+      const alias = this._aliases[event.code];
+      if (alias) this.keys.add(alias);
       if (this.onKey) this.onKey(event.code);
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
         event.preventDefault();
       }
     });
-    window.addEventListener('keyup', (event) => { this.keys.delete(event.code); });
+    window.addEventListener('keyup', (event) => {
+      this.keys.delete(event.code);
+      const alias = this._aliases[event.code];
+      if (alias) this.keys.delete(alias);
+    });
     window.addEventListener('blur', () => { this.keys.clear(); });
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === canvas;

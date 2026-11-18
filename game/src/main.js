@@ -1,5 +1,8 @@
 // Neon Bay — the game itself: boot, loop, driving and on-foot play, car stealing,
 // combat, wanted heat, missions, saves, and deterministic screenshot staging.
+// v2: neon-orb side activity, police helicopter with rotor audio, screen shake and
+// crash smoke, a car horn, mission intro cards, seven story jobs, and busier
+// screenshot staging (more traffic, pedestrians and orbs in frame).
 import * as THREE from 'three';
 import { City, CITY_EXTENT } from './city.js';
 import { Input } from './input.js';
@@ -9,15 +12,25 @@ import { Player } from './player.js';
 import { TrafficSystem } from './traffic.js';
 import { PoliceSystem } from './police.js';
 import { Missions } from './missions.js';
+import { OrbSystem, ORB_VALUE, ORB_COUNT } from './orbs.js';
 import { createCarMesh, CarDriver, makeRngCar } from './cars.js';
 import { makeRng } from './random.js';
 import { readShotParam, SHOT_STAGING } from './shots.js';
 
 const SAVE_KEY = 'neonbay-save-v1';
 const VOLT_SPOT = { x: 168, z: -120 };
+// WAVE 88.1 — Neon Bay's own radio: fictional stations and songs, rotated in-game
+const RADIO_SONGS = [
+  'Neon Drive — Midnight Mirage',
+  'Velvet Static — Chrome Hearts',
+  'Lumen Park — Rain City',
+  'Cassette Sun — Afterglow',
+  'The Glass Owls — Ultraviolet',
+];
 const PARKED_SPOTS = [
   { x: -24, z: 66 }, { x: 72, z: -168 }, { x: -120, z: -24 }, { x: 120, z: 168 },
   { x: -168, z: 72 }, { x: 24, z: -120 }, { x: 168, z: 24 }, { x: -72, z: -168 },
+  { x: 120, z: -72 }, { x: -24, z: 120 }, { x: 72, z: 120 }, { x: -120, z: 120 },
 ];
 
 export class Game {
@@ -28,14 +41,15 @@ export class Game {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.3;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 900);
     this.camera.position.set(0, 30, 60);
     // camera fill light: a soft cool light that rides with the camera so the car
-    // and the near street always read, even far from any streetlight
-    this.fillLight = new THREE.PointLight(0x7fb4ff, 120, 30, 1.8);
-    this.fillLight.position.set(0, 6, -6);
+    // and the near street always read, even far from any streetlight — strong
+    // enough to lift the dark road in the on-foot shots too
+    this.fillLight = new THREE.PointLight(0x7fb4ff, 320, 30, 1.8);
+    this.fillLight.position.set(0, 7, -3);
     this.camera.add(this.fillLight);
     this.scene.add(this.camera);
     this.clock = new THREE.Clock();
@@ -47,6 +61,7 @@ export class Game {
     this.police = new PoliceSystem(this.scene, this.city);
     this.player = new Player(this.scene);
     this.missions = new Missions(this.scene);
+    this.orbs = new OrbSystem(this.scene, this.city);
     this.rng = makeRng(31337);
 
     this.state = 'menu'; // menu | playing | dialog | paused | ended
@@ -69,6 +84,12 @@ export class Game {
     this.camPos = new THREE.Vector3(0, 30, 60);
     this.camLook = new THREE.Vector3(0, 1.5, 0);
     this.saveData = this._loadSave();
+    this.shake = 0;
+    this.smoke = [];
+    this._smokeTex = this._smokeTexture();
+    this.radioIndex = 0;
+    this.radioTimer = 0;
+    this.policeListTimer = 0;
 
     this._buildParkedCars();
     this._buildVoltGT();
@@ -89,7 +110,9 @@ export class Game {
     for (const spot of PARKED_SPOTS) {
       const mesh = makeRngCar(this.rng);
       mesh.position.set(spot.x, 0, spot.z);
-      mesh.rotation.y = this.rng.range(0, Math.PI * 2);
+      // parked cars face along the street grid, never diagonally into a wall,
+      // so a stolen car can always drive away from the curb
+      mesh.rotation.y = this.rng.pick([0, Math.PI / 2, Math.PI, -Math.PI / 2]);
       this.scene.add(mesh);
       this.parkedCars.push({ mesh, owned: false, volt: false });
     }
@@ -124,6 +147,48 @@ export class Game {
     this.scene.add(this.muzzleLight);
   }
 
+  _smokeTexture() {
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 64;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(160,160,170,0.8)');
+    grad.addColorStop(1, 'rgba(160,160,170,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  }
+
+  _spawnSmoke(pos, count = 6) {
+    for (let i = 0; i < count; i++) {
+      const mat = new THREE.SpriteMaterial({ map: this._smokeTex, transparent: true, opacity: 0.45, depthWrite: false });
+      const sprite = new THREE.Sprite(mat);
+      sprite.position.set(pos.x + this.rng.range(-1, 1), 1 + this.rng.range(0, 1), pos.z + this.rng.range(-1, 1));
+      sprite.scale.setScalar(2 + this.rng.next() * 2);
+      this.scene.add(sprite);
+      this.smoke.push({
+        sprite,
+        vel: new THREE.Vector3(this.rng.range(-0.8, 0.8), this.rng.range(1.2, 2.4), this.rng.range(-0.8, 0.8)),
+        life: 1.1, maxLife: 1.1,
+      });
+    }
+  }
+
+  _updateSmoke(dt) {
+    for (let i = this.smoke.length - 1; i >= 0; i--) {
+      const s = this.smoke[i];
+      s.life -= dt;
+      if (s.life <= 0) {
+        this.scene.remove(s.sprite);
+        s.sprite.material.dispose();
+        this.smoke.splice(i, 1);
+        continue;
+      }
+      s.sprite.position.addScaledVector(s.vel, dt);
+      s.sprite.scale.addScalar(dt * 3);
+      s.sprite.material.opacity = 0.45 * (s.life / s.maxLife);
+    }
+  }
+
   _wireUI() {
     document.getElementById('startBtn').addEventListener('click', () => this._startGame(false));
     document.getElementById('continueBtn').addEventListener('click', () => this._startGame(true));
@@ -136,6 +201,69 @@ export class Game {
   _updateStartButtons() {
     const btn = document.getElementById('continueBtn');
     btn.style.display = this.saveData ? 'inline-block' : 'none';
+  }
+
+  _updateJobProgress() {
+    const el = document.getElementById('jobProgress');
+    if (el) el.textContent = `Jobs done: ${this.missions.completed} / 7`;
+  }
+
+  // respect: 70% from jobs done, 30% from orbs collected
+  _respect() {
+    return Math.round((this.missions.completed / 7) * 70 + (this.orbs.collected / ORB_COUNT) * 30);
+  }
+
+  _updateRespect() {
+    this.hud.setRespect(this._respect());
+  }
+
+  // mission panel text: stage x/y and the NEXT step (or the payout)
+  _missionPanel() {
+    const active = this.missions.active;
+    if (!active) return { stage: '', next: '' };
+    const def = active.def;
+    const step = this.missions.currentStep();
+    const stage = `STAGE ${active.stepIndex + 1}/${def.steps.length} · $${def.reward}`;
+    let next = '';
+    if (active.stepIndex + 1 < def.steps.length) {
+      next = `NEXT: ${def.steps[active.stepIndex + 1].text}`;
+    } else {
+      next = `NEXT: Finish the job — $${def.reward} payout`;
+    }
+    return { stage, next };
+  }
+
+  // Vex's intro line, shortened for the mission card (her "Vex: " prefix is
+  // already on the card as VEX MARLOWE)
+  _vexQuote(intro) {
+    const q = (intro || '').replace(/^Vex: /, '');
+    return q.length > 85 ? `${q.slice(0, 85).trimEnd()}…` : q;
+  }
+
+  _refreshMissionPanel() {
+    if (!this.missions.active) return;
+    const step = this.missions.currentStep();
+    const { stage, next } = this._missionPanel();
+    this.hud.setMission(`JOB ${this.missions.active.def.id}: ${this.missions.active.def.title}`, step ? step.text : '', stage, next);
+  }
+
+  // Bay PD response list: nearest named units with distances
+  _refreshPoliceList() {
+    const pp = this.inCar ? this.playerCarMesh.position : this.player.position;
+    const units = [];
+    this.police.cars.forEach((car, i) => {
+      const d = Math.round(Math.hypot(car.mesh.position.x - pp.x, car.mesh.position.z - pp.z));
+      units.push({ name: `NBPD-${String(i + 1).padStart(2, '0')}`, dist: `${d}m`, d });
+    });
+    this.police.cops.forEach((cop, i) => {
+      const d = Math.round(Math.hypot(cop.mesh.position.x - pp.x, cop.mesh.position.z - pp.z));
+      units.push({ name: `NBPD-F${i + 1}`, dist: `${d}m`, d });
+    });
+    if (this.police.heli) {
+      units.push({ name: 'AIR-1 HELI', dist: 'overhead', d: 0 });
+    }
+    units.sort((a, b) => a.d - b.d);
+    this.hud.setPoliceList(units);
   }
 
   // ---------- save / load ----------
@@ -152,6 +280,7 @@ export class Game {
         cash: this.cash,
         completed: this.missions.completed,
         health: this.player.health,
+        orbs: this.orbs.collected,
         pos: { x: this.player.position.x, z: this.player.position.z },
       }));
     } catch { /* storage unavailable */ }
@@ -168,6 +297,7 @@ export class Game {
       this.cash = this.saveData.cash || 0;
       this.missions.completed = this.saveData.completed || 0;
       this.player.health = this.saveData.health || 100;
+      this.orbs.setCollected(this.saveData.orbs || 0);
       this.player.reset(this.saveData.pos?.x ?? 0, this.saveData.pos?.z ?? 24);
       this.hud.feed('Save loaded. Welcome back to Neon Bay.');
     } else {
@@ -176,6 +306,10 @@ export class Game {
     }
     this.hud.setCash(this.cash);
     this.hud.setHealth(this.player.health);
+    this.hud.setOrbs(this.orbs.collected, ORB_COUNT);
+    this.hud.setRadio(RADIO_SONGS[this.radioIndex]);
+    this._updateRespect();
+    this._updateJobProgress();
     this._offerMission();
   }
 
@@ -183,6 +317,7 @@ export class Game {
     this.cash = 0;
     this.missions.completed = 0;
     this.missions.active = null;
+    this.orbs.reset();
     this.player.reset(0, 24);
     this.police.clearWanted();
     this._exitCar(false);
@@ -208,7 +343,7 @@ export class Game {
   // ---------- missions ----------
   _offerMission() {
     if (this.missions.done) {
-      this._say('VEX', 'You did it, Rook. Five jobs, one legend. Neon Bay is yours now — free roam, keep the cash coming.');
+      this._say('VEX', 'You did it, Rook. Seven jobs, one legend. Neon Bay is yours now — free roam, keep the cash coming.');
       return;
     }
     const def = this.missions.currentDef;
@@ -216,10 +351,12 @@ export class Game {
     this._say('VEX', def.intro, () => {
       const started = this.missions.startNext();
       if (started) {
-        this.hud.setMission(`JOB ${started.id}: ${started.title}`, this.missions.currentStep().text);
+        this._refreshMissionPanel();
         this.hud.setJob(`JOB ${started.id}`);
         this.hud.feed(`New job: ${started.title} — $${started.reward}`);
+        this.hud.showMissionCard(`JOB ${started.id}`, `${started.title} — $${started.reward}`, 3200, this._vexQuote(started.intro));
         if (started.id === 4) this.police.addCrime(2);
+        if (started.id === 7) this.police.addCrime(4); // five-star heat from the start
         this._maybeSpawnFight();
         this._updateVoltRing();
       }
@@ -282,6 +419,7 @@ export class Game {
     if (this.state === 'playing' && code === 'Escape') {
       this.state = 'paused';
       document.getElementById('pauseScreen').style.display = 'flex';
+      this._updateJobProgress();
       this.input.unlockPointer();
       return;
     }
@@ -289,6 +427,12 @@ export class Game {
     if (this.state !== 'playing') return;
     if (code === 'KeyE') this._toggleCar();
     if (code === 'KeyF') this._punch();
+    if (code === 'KeyH') {
+      // car horn: honk, and nearby pedestrians scatter
+      this.audio.horn();
+      const pp = this.inCar ? this.playerCarMesh.position : this.player.position;
+      this.traffic.honkFlee(pp.x, pp.z);
+    }
     if (code === 'KeyR' && this.inCar) {
       const p = this.playerCarMesh.position;
       const spot = this.city.nearestStreetPoint(p.x, p.z);
@@ -444,7 +588,7 @@ export class Game {
     this.hud.setCrosshair(false);
     // headlight
     if (!this.headlight) {
-      this.headlight = new THREE.SpotLight(0xfff2c0, 500, 70, 0.55, 0.5, 1.6);
+      this.headlight = new THREE.SpotLight(0xfff2c0, 700, 70, 0.55, 0.5, 1.6);
       this.headlight.position.set(0, 1.2, 2);
       const target = new THREE.Object3D();
       target.position.set(0, 0, 30);
@@ -489,7 +633,7 @@ export class Game {
   _handleMissionEvent(ev) {
     if (!ev) return;
     if (ev.type === 'stepComplete') {
-      this.hud.setMission(`JOB ${this.missions.active.def.id}: ${this.missions.active.def.title}`, ev.step.text);
+      this._refreshMissionPanel();
       this.hud.feed('Objective updated.');
       this.audio.pickup();
       this._maybeSpawnFight();
@@ -500,9 +644,12 @@ export class Game {
       this.hud.setMission('FREE ROAM', 'Job done. Vex will call with the next one.');
       this.hud.setJob('FREE ROAM');
       this.hud.feed(`Job complete! +$${ev.reward}`);
-      this.audio.cash();
+      this.hud.showMissionCard('JOB COMPLETE', `+$${ev.reward} — Vex will call with the next one.`);
+      this.audio.fanfare();
       this.player.heal(25);
       this.hud.setHealth(this.player.health);
+      this._updateJobProgress();
+      this._updateRespect();
       this._save();
       window.setTimeout(() => { if (this.state === 'playing') this._offerMission(); }, 3500);
     }
@@ -518,12 +665,24 @@ export class Game {
     this.state = 'playing';
     this.cash = 1250;
     this.hud.setCash(this.cash);
-    if (s.mission === 2) {
+    this.hud.setOrbs(this.orbs.collected, ORB_COUNT);
+    this.hud.setRadio(RADIO_SONGS[0]);
+    this._updateRespect();
+    if (s.mission === 1) {
+      // cover shot: job 1 active so the mission panel shows stage + NEXT step
+      const def = this.missions.startNext();
+      if (def) {
+        this._refreshMissionPanel();
+        this.hud.setJob(`JOB ${def.id}`);
+        this.hud.showMissionCard(`JOB ${def.id}`, `${def.title} — $${def.reward}`, 30000, this._vexQuote(def.intro));
+      }
+    } else if (s.mission === 2) {
       this.missions.completed = 1;
       const def = this.missions.startNext();
       if (def) {
-        this.hud.setMission(`JOB ${def.id}: ${def.title}`, this.missions.currentStep().text);
+        this._refreshMissionPanel();
         this.hud.setJob(`JOB ${def.id}`);
+        this.hud.showMissionCard(`JOB ${def.id}`, `${def.title} — $${def.reward}`, 30000, this._vexQuote(def.intro));
       }
       this._updateVoltRing();
     } else if (s.mission === 0) {
@@ -535,7 +694,7 @@ export class Game {
       // the chase is visible in frame; they hold position (staged) for the shot
       const fwd = { x: Math.sin(s.player.heading), z: Math.cos(s.player.heading) };
       this.police.cars.forEach((car, i) => {
-        const ahead = 26 + i * 12;
+        const ahead = 20 + i * 10;
         const lane = i % 2 === 0 ? -2.8 : 2.8;
         car.mesh.position.set(
           s.player.x + fwd.x * ahead + fwd.z * lane,
@@ -546,6 +705,18 @@ export class Game {
         car.mesh.rotation.y = car.heading;
         car.staged = true;
       });
+      // at 4 stars the helicopter is up: park it OVER THE PLAYER'S OWN STREET,
+      // 48 units ahead and low (y=13), and hold it there. Off-street spots hide
+      // it behind the block's buildings, and dead-center high hides it behind
+      // the mission panel — this spot lands in the clear gap between the mission
+      // panel and the mission card, white body + red stripe + searchlight
+      // reading against the dark street. The road is clear to any height.
+      if (s.wanted >= 4 && this.police.heli) {
+        this.police.placeHeli(
+          s.player.x + fwd.x * 48, 13,
+          s.player.z + fwd.z * 48,
+        );
+      }
     }
     if (s.mode === 'car') {
       const mesh = createCarMesh({ color: 0xff2d78, underglow: 0x00e5ff, sport: true });
@@ -557,6 +728,8 @@ export class Game {
       this.player.group.position.set(s.player.x, 0, s.player.z);
       this._enterCar(car);
       this.playerCar.heading = s.car.heading;
+      // cruise at ~54 km/h so the big speedometer reads in the shot
+      this.playerCar.speed = 15;
     } else {
       this.player.group.position.set(s.player.x, 0, s.player.z);
       this.player.yaw = s.player.heading;
@@ -578,8 +751,25 @@ export class Game {
       car.street = car.horizontal ? Math.round(cz) : Math.round(cx);
       car.lane = lane;
     });
+    // pull pedestrians onto the sidewalk in frame
+    const peds = this.traffic.peds.slice(0, s.pedsNear || 0);
+    peds.forEach((ped, i) => {
+      const side = i % 2 === 0 ? 1 : -1;
+      const along = (i - (s.pedsNear || 0) / 2) * 7;
+      ped.mesh.position.set(
+        s.player.x + forward.z * side * 7.6 + forward.x * along,
+        0,
+        s.player.z + forward.z * along - forward.x * side * 7.6,
+      );
+    });
+    // put a couple of neon orbs where the camera can see them
+    if (s.orbsNear) this.orbs.placeNear(s.player.x, s.player.z);
     this.hud.setHealth(this.player.health);
     this.hud.setWanted(this.police.wanted);
+    // populate the Bay PD response list NOW (it normally refreshes on a
+    // 0.5s game-time timer — at screenshot frame rates that would still read
+    // "No units responding" when the shutter fires)
+    this._refreshPoliceList();
     // snap the chase cam to its target now: at SwiftShader frame rates the
     // per-frame lerp would still be settling when the screenshot is taken
     if (this.inCar && this.playerCarMesh) {
@@ -619,7 +809,7 @@ export class Game {
       const t = this.time * 0.05;
       this.camera.position.set(Math.cos(t) * 120, 55, Math.sin(t) * 120);
       this.camera.lookAt(0, 8, 0);
-      this.city.updateRain(dt, { x: 0, z: 0 });
+      this.city.update(dt, this.time, { x: 0, z: 0 });
       this.renderer.render(this.scene, this.camera);
       return;
     }
@@ -632,7 +822,7 @@ export class Game {
     if (playing) {
       this._updateWorld(dt);
     } else if (pausedWorld) {
-      this.city.updateRain(dt, this.player.position);
+      this.city.update(dt, this.time, this.player.position);
     }
     // camera
     if (this.inCar && this.playerCarMesh) {
@@ -651,6 +841,13 @@ export class Game {
       this.camPos.copy(this.camera.position);
       this.camLook.set(this.player.position.x, 1.6, this.player.position.z);
     }
+    // screen shake on hard hits, decaying fast
+    if (this.shake > 0.001) {
+      this.camera.position.x += (Math.random() - 0.5) * this.shake;
+      this.camera.position.y += (Math.random() - 0.5) * this.shake * 0.6;
+      this.shake *= Math.max(0, 1 - dt * 4);
+    }
+    this._updateSmoke(dt);
     // tracer fade
     if (this.tracerTimer > 0) {
       this.tracerTimer -= dt;
@@ -678,11 +875,14 @@ export class Game {
         this.audio.crash();
         this.playerCar.speed *= 0.7;
       }
-      // police ram damage
+      // police ram damage: shake, smoke, flash, health loss
       const impact = this.police.ramCheck(this.playerCarMesh.position, 1.6);
       if (impact > 16 && this.time - (this._lastRam || 0) > 1.5) {
         this._lastRam = this.time;
         this.audio.crash();
+        this.shake = 0.7;
+        this._spawnSmoke(this.playerCarMesh.position, 6);
+        this.hud.flashDamage();
         if (this.player.damage(8)) this._wasted();
       }
       this.audio.setEngine(this.playerCar.speed * 3.6, res.throttle > 0);
@@ -699,6 +899,31 @@ export class Game {
     const pol = this.police.update(dt, pp, this.inCar, this.inCar ? this.playerCar.speed : 0);
     if (pol.busted) { this._busted(); return; }
     this.audio.updateSiren(dt, this.police.nearby);
+    this.audio.updateRotor(this.police.heliActive);
+    this.audio.updateMusic(dt);
+    // radio rotates to the next song every 45 seconds of game time
+    this.radioTimer += dt;
+    if (this.radioTimer > 45) {
+      this.radioTimer = 0;
+      this.radioIndex = (this.radioIndex + 1) % RADIO_SONGS.length;
+      this.hud.setRadio(RADIO_SONGS[this.radioIndex]);
+    }
+    // Bay PD response list, refreshed twice a second (not every frame)
+    this.policeListTimer += dt;
+    if (this.policeListTimer > 0.5) {
+      this.policeListTimer = 0;
+      this._refreshPoliceList();
+    }
+    // neon orbs: walk through one, get $50
+    const picked = this.orbs.update(dt, this.time, pp);
+    if (picked > 0) {
+      this.cash += picked * ORB_VALUE;
+      this.hud.setCash(this.cash);
+      this.hud.setOrbs(this.orbs.collected, ORB_COUNT);
+      this._updateRespect();
+      this.audio.orb();
+      this.hud.feed(`Neon orb collected! +$${picked * ORB_VALUE}`);
+    }
     // enemies
     for (const e of this.enemies) {
       if (e.down) continue;
@@ -717,6 +942,8 @@ export class Game {
         if (e.attackCooldown <= 0) {
           e.attackCooldown = 1.1;
           this.audio.punch();
+          this.hud.flashDamage();
+          this.shake = 0.4;
           if (this.player.damage(8)) { this._wasted(); return; }
           this.hud.setHealth(this.player.health);
         }
@@ -725,8 +952,8 @@ export class Game {
     // missions
     const ev = this.missions.update(dt, pp, this.inCar, this.police.wanted);
     if (ev) this._handleMissionEvent(ev);
-    // rain follows the player
-    this.city.updateRain(dt, pp);
+    // rain, beacons, flicker, clouds and splashes follow the player
+    this.city.update(dt, this.time, pp);
     // HUD
     this.hud.setWanted(this.police.wanted);
     this.hud.setHealth(this.player.health);
@@ -735,13 +962,15 @@ export class Game {
       traffic: this.traffic.cars.map((c) => ({ x: c.mesh.position.x, z: c.mesh.position.z })),
       police: [...this.police.cars.map((c) => ({ x: c.mesh.position.x, z: c.mesh.position.z })),
                ...this.police.cops.map((c) => ({ x: c.mesh.position.x, z: c.mesh.position.z }))],
+      heli: this.police.heliPosition,
+      orbs: this.orbs.remaining().map((o) => ({ x: o.x, z: o.z })),
       player: { x: pp.x, z: pp.z, heading: this.inCar ? this.playerCar.heading : this.player.yaw },
       missionTarget: this.missions.currentTarget(),
     });
     // mission step text refresh
     const step = this.missions.currentStep();
     if (step && this.missions.active) {
-      this.hud.setMission(`JOB ${this.missions.active.def.id}: ${this.missions.active.def.title}`, step.text);
+      this._refreshMissionPanel();
     }
   }
 
