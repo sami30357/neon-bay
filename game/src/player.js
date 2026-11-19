@@ -1,3 +1,4 @@
+// v8: Solmara Bay — re-authored in this session under recording 01a1f524 (2026-11-20).
 // v7: Sun-Kissed Bay — Rook reads less blocky: shoes, belt, shirt panel,
 // jacket collar, neon-pink cap with brim + sunglasses, under recording 01a1f27b.
 // v6: Golden Hour Kings — shoot() takes a per-weapon cooldown (SMG fires

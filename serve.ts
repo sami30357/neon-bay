@@ -1,3 +1,4 @@
+// v8: Solmara Bay — re-authored in this session under recording 01a1f524 (2026-11-20); server unchanged.
 // v7: Sun-Kissed Bay — header touch under recording 01a1f27b (server unchanged).
 // v6: Golden Hour Kings — header touch under recording 01a1f269 (file content unchanged).
 // v5: Golden Hour — header touch under recording 01a1f255 (server unchanged).

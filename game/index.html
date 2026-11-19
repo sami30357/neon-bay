@@ -1,11 +1,12 @@
 <!doctype html>
+<!-- v8: Solmara Bay — real waterfront, crew, Job 11, bright-noon opening, re-authored in this session under recording 01a1f524 (2026-11-20). -->
 <!-- v7: Sun-Kissed Bay — helicopter + street races on the start screen + controls, under recording 01a1f27b. -->
 <!-- v6: Golden Hour Kings — weapon readout, garage + shop panels, 10 jobs on the start screen, under recording 01a1f269. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Neon Bay — a rain-slick open-world crime game</title>
+<title>Neon Bay — a sun-soaked open-world crime game</title>
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #05060f; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
@@ -34,6 +35,29 @@
   #policeBox .pTitle { color: #ff5e5e; font-weight: 700; letter-spacing: 2px; font-size: 11px; }
   #policeBox .unit { color: #cfe8ff; }
   #policeBox .unit b { color: #fff; }
+  #policeBox .unit .dist { color: #8fd8ff; }
+  #policeBox .role { display: inline-block; padding: 1px 6px; border-radius: 3px; font-weight: 700; font-size: 10px; letter-spacing: 1px; margin: 0 2px; }
+  #policeBox .role-ramming { background: #ff2244; color: #fff; }
+  #policeBox .role-pursuit { background: #2255ff; color: #fff; }
+  #policeBox .role-flanking { background: #ffae00; color: #111; }
+  #policeBox .role-spotlight { background: #00e5ff; color: #04222e; }
+  #policeBox .role-roadblock { background: #ffd75e; color: #111; }
+  #policeBox .role-closing-in { background: #b300ff; color: #fff; }
+  #policeBox .role-responding { background: #3a4568; color: #cfe8ff; }
+  /* v8: crew panel — three faces, three abilities, three cooldowns */
+  #crewBox { position: absolute; right: 12px; top: 218px; font-size: 12px; line-height: 1.5; min-width: 196px; }
+  #crewBox .cTitle { color: #39ff88; font-weight: 700; letter-spacing: 2px; font-size: 11px; margin-bottom: 4px; }
+  #crewBox .crewRow { display: flex; gap: 8px; align-items: center; margin: 5px 0; }
+  #crewBox .crewRow.cooling { opacity: 0.55; }
+  #crewBox canvas { width: 32px; height: 32px; flex: none; border-radius: 6px; border: 1px solid rgba(57, 255, 136, 0.5); }
+  #crewBox .cName { font-weight: 700; color: #fff; letter-spacing: 1px; }
+  #crewBox .cAbility { color: #9fc6e8; font-size: 11px; }
+  #crewBox .cKey { margin-left: auto; font-weight: 700; color: #ffd75e; border: 1px solid rgba(255, 215, 94, 0.6); border-radius: 4px; padding: 0 6px; font-size: 11px; white-space: nowrap; }
+  #crewBox .cKey.cooling { color: #8fa8c9; border-color: rgba(143, 168, 201, 0.5); }
+  /* v8: district label under the minimap — raised clear of the minimap's top edge (was 210px, the second line clipped behind the map) */
+  #districtLabel { position: absolute; right: 12px; bottom: 228px; text-align: right; font-size: 12px; line-height: 1.5; }
+  #districtLabel b { color: #ffd75e; letter-spacing: 2px; font-size: 13px; display: block; }
+  #districtLabel span { color: #8fd8ff; letter-spacing: 1px; }
   #respectBox { margin-top: 6px; }
   #respectBox .rLabel { font-size: 11px; color: #ffd75e; letter-spacing: 2px; }
   #respectBarWrap { width: 180px; height: 8px; background: rgba(255,255,255,.15); border-radius: 4px; margin-top: 3px; overflow: hidden; }
@@ -94,14 +118,16 @@
 </style>
 </head>
 <body>
-<canvas id="game" aria-label="Neon Bay: a rain-slick neon metropolis you explore on foot and by car"></canvas>
+<canvas id="game" aria-label="Neon Bay: a sun-soaked coastal open-world crime game you explore on foot, by car and by helicopter"></canvas>
 <p id="status" role="status" aria-live="polite"></p>
 
 <div id="hud">
-  <div id="cashBox" class="panel">$<span id="cash">0</span><small>NEON BAY &middot; <span id="jobLabel">FREE ROAM</span></small><div id="orbBox">NEON ORBS <span id="orbCount">0/12</span></div><div id="weaponBox">WEAPON <span id="weaponName">PISTOL</span> &middot; <span id="weaponAmmo">&infin;</span></div><div id="healthBarWrap"><div id="healthBar"></div></div><div id="respectBox"><div class="rLabel">RESPECT <span id="respectPct">0%</span></div><div id="respectBarWrap"><div id="respectBar"></div></div></div></div>
+  <div id="cashBox" class="panel">$<span id="cash">0</span><small>NEON BAY &middot; <span id="jobLabel">FREE ROAM</span></small><div id="orbBox">NEON ORBS <span id="orbCount">0/12</span></div><div id="weaponBox">WEAPON <span id="weaponName">PISTOL</span> &middot; <span id="weaponAmmo">&infin;</span></div><div id="healthBarWrap"><div id="healthBar"></div></div><div id="respectBox"><div class="rLabel">RESPECT <span id="respectRank">ROOKIE</span> &middot; <span id="respectPct">0%</span></div><div id="respectBarWrap"><div id="respectBar"></div></div></div></div>
   <div id="wantedBox" class="panel"><span data-star="1">&#9733;</span><span data-star="2">&#9733;</span><span data-star="3">&#9733;</span><span data-star="4">&#9733;</span><span data-star="5">&#9733;</span></div>
-  <div id="radioBox" class="panel"><div class="station">WAVE 88.1</div><div class="song" id="radioSong">Neon Drive — Midnight Mirage</div><div class="clock" id="clockLine">17:30 · GOLDEN HOUR</div></div>
-  <div id="policeBox" class="panel"><div class="pTitle">BAY PD RESPONSE</div><div id="policeList"><div class="unit">No units responding</div></div></div>
+  <div id="radioBox" class="panel"><div class="station">BAY FM 88.1</div><div class="song" id="radioSong">Neon Drive — Midnight Mirage</div><div class="clock" id="clockLine">12:00 · DAY</div></div>
+  <div id="policeBox" class="panel"><div class="pTitle" id="policeTitle">BAY PD RESPONSE</div><div id="policeList"><div class="unit">No units responding</div></div></div>
+  <div id="crewBox" class="panel"><div class="cTitle">CREW</div><div class="crewRow" id="crewRow0"><canvas id="crewPortrait0" width="64" height="64"></canvas><div><div class="cName">MIRA · DRIVER</div><div class="cAbility">SWAP PLATES — lose a star</div></div><span class="cKey" id="crewCd0">Z · READY</span></div><div class="crewRow" id="crewRow1"><canvas id="crewPortrait1" width="64" height="64"></canvas><div><div class="cName">ZIO · MECHANIC</div><div class="cAbility">QUICK FIX — patch up +50</div></div><span class="cKey" id="crewCd1">X · READY</span></div><div class="crewRow" id="crewRow2"><canvas id="crewPortrait2" width="64" height="64"></canvas><div><div class="cName">KIKI · LOOKOUT</div><div class="cAbility">EYES OUT — spot all units</div></div><span class="cKey" id="crewCd2">C · READY</span></div></div>
+  <div id="districtLabel"><b id="districtName">MERIDIAN CROSSING</b><span id="districtStanding">NEUTRAL · 0%</span></div>
   <div id="missionBox" class="panel"><b id="missionTitle">FREE ROAM</b><div id="missionText">Explore Neon Bay. Steal a car with E. Missions come from Vex.</div><div id="missionStage"></div><div id="missionNext"></div></div>
   <div id="speedBox" class="panel"><b id="speed">0</b> <span class="unit">KM/H</span> &middot; <span id="modeLabel">ON FOOT</span> <span class="gear" id="gearLabel"></span></div>
   <div id="minimapWrap"><canvas id="minimap" width="190" height="190"></canvas></div>
@@ -116,22 +142,23 @@
 
 <div id="startScreen" class="screen">
   <h1>NEON <span class="bay">BAY</span></h1>
-  <div class="tag">A RAIN-SLICK OPEN-WORLD CRIME GAME &middot; 10 JOBS &middot; 3 STREET RACES &middot; FLYABLE HELICOPTER &middot; 12 NEON ORBS &middot; A FULL DAY-NIGHT CYCLE &middot; GOLDEN-HOUR OPENING</div>
-  <div class="story">Rain on neon. You are <b>Rook</b>, a driver with no past and one fast car-shaped future.
-  Fixer <b>Vex Marlowe</b> has ten jobs for you across the wet streets of Neon Bay — steal, deliver,
+  <div class="tag">A SUN-SOAKED COASTAL OPEN-WORLD CRIME GAME &middot; 11 JOBS &middot; 3 STREET RACES &middot; FLYABLE HELICOPTER &middot; 12 NEON ORBS &middot; A FULL DAY-NIGHT CYCLE &middot; BRIGHT-NOON OPENING</div>
+  <div class="story">Sun on the water. You are <b>Rook</b>, a driver with no past and one fast car-shaped future.
+  Fixer <b>Vex Marlowe</b> has eleven jobs for you across the bright streets of Neon Bay — steal, deliver,
   fight, outrun the Bay PD and its helicopter. Earn the cash. Don't get caught. The city runs on a
-  real clock now: night, dawn, day, golden hour, dusk — and it opens at golden hour, 17:30, the
-  whole skyline on fire. Tune your ride at Garage 9, stock up at AMMO-NATION, and mind the
+  real clock now: night, dawn, day, golden hour, dusk — and it opens at bright noon, 12:00, the
+  whole bay glittering. Tune your ride at Garage 9, stock up at AMMO-NATION, and mind the
   roadblocks at four stars and up. The gold <b>SKYHAWK</b> helicopter waits on its helipad by the
-  marina, and the pier crowd runs three street races at the checkered flag — beat the par and the
-  crowd pays.</div>
+  marina, the pier crowd runs three street races at the checkered flag — beat the par and the
+  crowd pays — and your crew has your back: <b>Mira</b> swaps the plates, <b>Zio</b> patches you up,
+  <b>Kiki</b> spots the law before it spots you.</div>
   <div class="joblist">
     <b>1</b> NEON RUN &middot; <b>2</b> HOT WHEELS &middot; <b>3</b> RAIN CHECK &middot; <b>4</b> BLACKOUT &middot; <b>5</b> THE LAST LIGHT<br>
-    <b>6</b> CAB CALL &middot; <b>7</b> KING OF THE BAY &middot; <b>8</b> GOLDEN HOUR &middot; <b>9</b> HIGH TIDE &middot; <b>10</b> GOLDEN HOUR KINGS
+    <b>6</b> CAB CALL &middot; <b>7</b> KING OF THE BAY &middot; <b>8</b> GOLDEN HOUR &middot; <b>9</b> HIGH TIDE &middot; <b>10</b> GOLDEN HOUR KINGS &middot; <b>11</b> TIDE RUNNER
   </div>
   <div class="controls">
     <b>W A S D</b> move / drive &nbsp; <b>Mouse</b> look &nbsp; <b>Shift</b> sprint / heli descend &nbsp; <b>E</b> enter / steal car / heli / shop / safehouse / race &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot<br>
-    <b>Space</b> handbrake / heli climb &nbsp; <b>1 2 3</b> pistol / SMG / shotgun &nbsp; <b>Q</b> cycle weapon &nbsp; <b>G</b> garage upgrades &nbsp; <b>H</b> horn &nbsp; <b>R</b> reset car &nbsp; <b>Enter</b> accept job &nbsp; <b>M</b> mute &nbsp; <b>Esc</b> pause
+    <b>Space</b> handbrake / heli climb &nbsp; <b>1 2 3</b> pistol / SMG / shotgun &nbsp; <b>Q</b> cycle weapon &nbsp; <b>G</b> garage upgrades &nbsp; <b>Z X C</b> crew: swap plates / quick fix / eyes out &nbsp; <b>H</b> horn &nbsp; <b>R</b> reset car &nbsp; <b>Enter</b> accept job &nbsp; <b>M</b> mute &nbsp; <b>Esc</b> pause
   </div>
   <div><button class="btn" id="startBtn">START ENGINE</button><button class="btn ghost" id="continueBtn">CONTINUE</button></div>
   <div id="saveNote">Progress saves automatically after every job. Sound starts when you press START.</div>
@@ -140,7 +167,7 @@
 <div id="pauseScreen" class="screen">
   <h1>PAUSED</h1>
   <div class="story">The rain keeps falling. The city waits.</div>
-  <div id="jobProgress">Jobs done: 0 / 10</div>
+  <div id="jobProgress">Jobs done: 0 / 11</div>
   <div><button class="btn" id="resumeBtn">RESUME</button><button class="btn ghost" id="saveBtn">SAVE GAME</button><button class="btn ghost" id="restartBtn">RESTART NIGHT</button></div>
   <div class="controls"><b>W A S D</b> move / drive &nbsp; <b>E</b> enter car / heli / shop / safehouse / race &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot &nbsp; <b>1 2 3</b> weapons &nbsp; <b>G</b> garage &nbsp; <b>Space</b> handbrake / heli climb &nbsp; <b>H</b> horn &nbsp; <b>M</b> mute</div>
 </div>

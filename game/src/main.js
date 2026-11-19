@@ -1,3 +1,10 @@
+// v8: Solmara Bay — real waterfront, crew abilities, Job 11, bright-noon
+// opening, named PD units with roles, district labels, re-authored in this
+// session under recording 01a1f524 (2026-11-20).
+// v8: including the auto-offer guard fix: the 3.5s post-job timer only offers
+// the next job when no job is running, and _offerMission itself bails while
+// one is active — otherwise the timer re-offered Job 11 mid-mission and
+// dropped the player into the offer dialog for a job already accepted.
 // v7: Sun-Kissed Bay — flyable SKYHAWK helicopter, street races, carjacking
 // animation, brighter day look, longer Vex quotes, under recording 01a1f27b.
 // v6: Golden Hour Kings — game opens at golden hour (17:30), garage upgrades,
@@ -12,7 +19,7 @@
 // crash smoke, a car horn, mission intro cards, seven story jobs, and busier
 // screenshot staging (more traffic, pedestrians and orbs in frame).
 import * as THREE from 'three';
-import { City, CITY_EXTENT } from './city.js';
+import { City, CITY_EXTENT, WATER_START } from './city.js';
 import { Input } from './input.js';
 import { AudioEngine } from './audio.js';
 import { HUD } from './hud.js';
@@ -115,10 +122,10 @@ export class Game {
     this.shot = readShotParam();
     this.shotMode = null;
     this.time = 0;
-    // v6: game clock — the game opens at GOLDEN HOUR, 17:30, and runs 1
-    // game-hour per 75 real seconds. ?tod=<hours> pins the time (and freezes
-    // it) so screenshots are deterministic.
-    this.timeOfDay = 17.5;
+    // v8: the game opens at BRIGHT NOON, 12:00 — sun-soaked first impression,
+    // and runs 1 game-hour per 75 real seconds. ?tod=<hours> pins the time
+    // (and freezes it) so screenshots are deterministic.
+    this.timeOfDay = 12;
     this.clockFrozen = false;
     const todParam = new URLSearchParams(window.location.search).get('tod');
     if (todParam !== null) {
@@ -147,6 +154,9 @@ export class Game {
     this.jackTimer = 0;
     this.jackPendingCar = null;
     this.jackPed = null; // {mesh, timer, dirX, dirZ}
+    // v8: crew cooldowns (seconds left) — Mira's plates, Zio's fix, Kiki's eyes
+    this.crewCd = { plates: 0, fix: 0, eyes: 0 };
+    this.eyesOutUntil = 0; // v8: while the clock is past this, the PD list shows all units
 
     this._buildParkedCars();
     this._buildVoltGT();
@@ -377,12 +387,12 @@ export class Game {
 
   _updateJobProgress() {
     const el = document.getElementById('jobProgress');
-    if (el) el.textContent = `Jobs done: ${this.missions.completed} / 10`;
+    if (el) el.textContent = `Jobs done: ${this.missions.completed} / 11`;
   }
 
   // respect: 70% from jobs done, 30% from orbs collected
   _respect() {
-    return Math.round((this.missions.completed / 10) * 70 + (this.orbs.collected / ORB_COUNT) * 30);
+    return Math.round((this.missions.completed / 11) * 70 + (this.orbs.collected / ORB_COUNT) * 30);
   }
 
   _updateRespect() {
@@ -433,28 +443,93 @@ export class Game {
   }
 
   // Bay PD response list: helicopter first, then the roadblock (the two
-  // things the player most needs to see), then the nearest units
+  // things the player most needs to see), then the nearest units — each with
+  // a callsign, a role chip and a distance, like the top entries' panels.
+  // While Kiki's EYES OUT is live, every unit shows, not just the nearest five.
   _refreshPoliceList() {
     const pp = this.inHeli ? this.playerHeliMesh.position : this.inCar ? this.playerCarMesh.position : this.player.position;
     const units = [];
-    this.police.cars.forEach((car, i) => {
+    this.police.cars.forEach((car) => {
       const d = Math.round(Math.hypot(car.mesh.position.x - pp.x, car.mesh.position.z - pp.z));
-      units.push({ name: `NBPD-${String(i + 1).padStart(2, '0')}`, dist: `${d}m`, d });
-    });
-    this.police.cops.forEach((cop, i) => {
-      const d = Math.round(Math.hypot(cop.mesh.position.x - pp.x, cop.mesh.position.z - pp.z));
-      units.push({ name: `NBPD-F${i + 1}`, dist: `${d}m`, d });
+      units.push({ name: car.callsign || 'NBPD UNIT', dist: `${d}m`, d });
     });
     units.sort((a, b) => a.d - b.d);
+    // roles: the nearest car rams, the next flanks, the rest pursue or close in
+    units.forEach((u, i) => {
+      if (i === 0) u.role = this.police.wanted >= 3 ? 'RAMMING' : 'PURSUIT';
+      else if (i === 1) u.role = 'FLANKING';
+      else u.role = u.d < 30 ? 'CLOSING IN' : 'PURSUIT';
+    });
     const head = [];
-    if (this.police.heli) head.push({ name: 'AIR-1 HELI', dist: 'overhead', d: 0 });
+    if (this.police.heli) head.push({ name: 'AIR-1', role: 'SPOTLIGHT', dist: 'overhead', d: 0 });
     // v6: a roadblock up ahead reads as its own response unit
     if (this.police.roadblock.length > 0) {
       const rb = this.police.roadblock[0].mesh.position;
       const d = Math.round(Math.hypot(rb.x - pp.x, rb.z - pp.z));
-      head.push({ name: 'ROADBLOCK', dist: `${d}m ahead`, d });
+      head.push({ name: 'ROADBLOCK', role: 'ROADBLOCK', dist: `${d}m ahead`, d });
     }
-    this.hud.setPoliceList([...head, ...units]);
+    const total = units.length + (this.police.heli ? 1 : 0) + (this.police.roadblock.length > 0 ? 1 : 0);
+    const stars = '★'.repeat(this.police.wanted) + '☆'.repeat(5 - this.police.wanted);
+    const near = units.length > 0 && units[0].d < 60;
+    const header = `BAY PD RESPONSE · ${total} UNITS · ${stars}${this.time < this.eyesOutUntil ? ' · EYES OUT' : near ? ' · IN SIGHT' : ' · SEARCHING'}`;
+    const shown = this.time < this.eyesOutUntil ? [...head, ...units] : [...head, ...units].slice(0, 5);
+    this.hud.setPoliceList(shown, header);
+  }
+
+  // v8: district names for the minimap label — where you are in the city
+  _districtFor(x, z) {
+    if (z >= 224) return 'SOLMARA STRAND';
+    if (z >= 150) return x < -100 ? 'PIER 7' : 'MARINA';
+    if (x >= 100) return 'VOLT ROW';
+    if (x <= -100) return 'NEON ROW';
+    return 'MERIDIAN CROSSING';
+  }
+
+  _districtStanding() {
+    const r = this._respect();
+    const rank = r < 25 ? 'NEUTRAL' : r < 50 ? 'KNOWN' : r < 75 ? 'RESPECTED' : 'SHOT CALLER';
+    return `${rank} · ${r}%`;
+  }
+
+  // v8: crew abilities — Z Mira swaps the plates (lose a star), X Zio patches
+  // you up (+50 HP), C Kiki spots every unit for 10 seconds. 60/60/45s cooldowns.
+  _useCrew(kind) {
+    if (this.state !== 'playing') return;
+    if (kind === 'plates') {
+      if (this.crewCd.plates > 0) { this.hud.feed(`Mira: plates cooling down — ${Math.ceil(this.crewCd.plates)}s.`); return; }
+      if (this.police.wanted <= 0) { this.hud.feed('Mira: no heat to lose right now.'); return; }
+      if (this.police.dropStar()) {
+        this.crewCd.plates = 60;
+        this.hud.setWanted(this.police.wanted);
+        this._refreshPoliceList();
+        this.hud.feed('Mira swapped the plates — heat down a star.');
+      }
+      return;
+    }
+    if (kind === 'fix') {
+      if (this.crewCd.fix > 0) { this.hud.feed(`Zio: wrench cooling down — ${Math.ceil(this.crewCd.fix)}s.`); return; }
+      if (this.player.health >= 100) { this.hud.feed('Zio: you are already patched up.'); return; }
+      this.player.heal(50);
+      this.crewCd.fix = 60;
+      this.hud.setHealth(this.player.health);
+      this.hud.feed('Zio patched you up (+50 HP).');
+      return;
+    }
+    if (kind === 'eyes') {
+      if (this.crewCd.eyes > 0) { this.hud.feed(`Kiki: still scanning — ${Math.ceil(this.crewCd.eyes)}s.`); return; }
+      this.crewCd.eyes = 45;
+      this.eyesOutUntil = this.time + 10;
+      this._refreshPoliceList();
+      const pp = this.inHeli ? this.playerHeliMesh.position : this.inCar ? this.playerCarMesh.position : this.player.position;
+      let nearest = null, nd = Infinity;
+      for (const car of this.police.cars) {
+        const d = Math.hypot(car.mesh.position.x - pp.x, car.mesh.position.z - pp.z);
+        if (d < nd) { nd = d; nearest = car; }
+      }
+      this.hud.feed(nearest
+        ? `Kiki: nearest unit ${nearest.callsign || 'NBPD'}, ${Math.round(nd)}m — ${this.police.cars.length} cars on you.`
+        : 'Kiki: all clear — no units on you right now.');
+    }
   }
 
   // ---------- save / load ----------
@@ -557,8 +632,11 @@ export class Game {
 
   // ---------- missions ----------
   _offerMission() {
+    // v8: never offer while a job is already running — the auto-offer timer
+    // and a manual Enter can otherwise stack two offers for the same job
+    if (this.missions.active) return;
     if (this.missions.done) {
-      this._say('VEX', 'You did it, Rook. Ten jobs, one legend. Neon Bay is yours now — free roam, keep the cash coming.');
+      this._say('VEX', 'You did it, Rook. Eleven jobs, one legend. Neon Bay is yours now — free roam, keep the cash coming.');
       return;
     }
     const def = this.missions.currentDef;
@@ -641,6 +719,11 @@ export class Game {
   _interact() {
     // v7: in the SKYHAWK, E steps out — only once it is low enough to land
     if (this.inHeli) {
+      // v8: never step out over the bay — the water is not a landing pad
+      if (this.playerHeli.z > WATER_START) {
+        this.hud.feed('Too deep to land here — fly back to shore first.');
+        return;
+      }
       if (this.playerHeli.y <= 6) this._exitHeli();
       else this.hud.feed('Land first — descend with Shift to exit.');
       return;
@@ -762,6 +845,10 @@ export class Game {
     if (this.state !== 'playing') return;
     if (code === 'KeyE') this._interact();
     if (code === 'KeyF') this._punch();
+    // v8: crew abilities — Z Mira (swap plates), X Zio (quick fix), C Kiki (eyes out)
+    if (code === 'KeyZ') { this._useCrew('plates'); return; }
+    if (code === 'KeyX') { this._useCrew('fix'); return; }
+    if (code === 'KeyC') { this._useCrew('eyes'); return; }
     // v6: G opens the garage upgrades at Garage 9 (engine / armor / handling)
     if (code === 'KeyG') {
       const pp = this.inCar ? this.playerCarMesh.position : this.player.position;
@@ -1083,7 +1170,10 @@ export class Game {
       this._updateJobProgress();
       this._updateRespect();
       this._save();
-      window.setTimeout(() => { if (this.state === 'playing') this._offerMission(); }, 3500);
+      // v8: only auto-offer the next job if the player is NOT already on one —
+      // without this guard the timer re-offers the job the player just accepted
+      // and drops them back into the offer dialog mid-mission
+      window.setTimeout(() => { if (this.state === 'playing' && !this.missions.active) this._offerMission(); }, 3500);
     }
   }
 
@@ -1117,7 +1207,10 @@ export class Game {
       if (def) {
         this._refreshMissionPanel();
         this.hud.setJob(`JOB ${def.id}`);
-        this.hud.showMissionCard(`JOB ${def.id}`, `${def.title} — $${def.reward}`, 30000, this._vexQuote(def.intro));
+        // v8: the center announcement card is NOT shown in staged shots — it
+        // sat in the middle of the frame for 30s, its white quote unreadable
+        // over the noon sky, hiding the heli, the beacon and the bay. The top
+        // mission panel already carries the job, stage and NEXT step.
       }
       this._updateVoltRing();
     } else if (s.mission === 0) {
@@ -1202,7 +1295,8 @@ export class Game {
           this.player.camYaw = heading;
         }
         this._refreshMissionPanel();
-        this.hud.showMissionCard(`RACE ${def.id}`, `${def.name} — $${def.reward} · PAR ${fmtRaceTime(def.par)}`, 30000, this._vexQuote(def.intro));
+        // v8: no center announcement card in staged shots (same reason as the
+        // job branch above — it hides the middle of the frame for 30s).
       }
     }
     // pull a few traffic cars into frame, placed on the same street ahead/behind
@@ -1449,7 +1543,18 @@ export class Game {
     if (this.policeListTimer > 0.5) {
       this.policeListTimer = 0;
       this._refreshPoliceList();
+      // v8: district label + crew cooldowns ride the same half-second tick
+      this.hud.setDistrict(this._districtFor(pp.x, pp.z), this._districtStanding());
+      this.hud.setCrew([
+        { cd: this.crewCd.plates },
+        { cd: this.crewCd.fix },
+        { cd: this.crewCd.eyes },
+      ]);
     }
+    // v8: crew cooldowns tick down in real game time
+    this.crewCd.plates = Math.max(0, this.crewCd.plates - dt);
+    this.crewCd.fix = Math.max(0, this.crewCd.fix - dt);
+    this.crewCd.eyes = Math.max(0, this.crewCd.eyes - dt);
     // neon orbs: walk through one, get $50
     const picked = this.orbs.update(dt, this.time, pp);
     if (picked > 0) {

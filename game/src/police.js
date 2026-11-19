@@ -1,3 +1,8 @@
+// v8: Solmara Bay — re-authored in this session under recording 01a1f524 (2026-11-20).
+// Every patrol car now carries a real Bay PD callsign from a 22-name sea/bird
+// pool (TARPON 38 first), handed out in order, plus dropStar() so Mira's
+// SWAP PLATES crew ability can stand the heat down a notch (roadblock and
+// heli included when the heat falls low).
 // v7: Sun-Kissed Bay — header touch under recording 01a1f27b (file content unchanged; the player helicopter is a separate gold/white SKYHAWK in heli.js, not the PD chopper here).
 // v6: Golden Hour Kings — roadblocks at 4-5 stars + header, under recording 01a1f269.
 // v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
@@ -15,6 +20,14 @@ import * as THREE from 'three';
 import { makeRng } from './random.js';
 import { createCarMesh } from './cars.js';
 import { CITY_EXTENT } from './city.js';
+
+// v8: Bay PD callsigns — sea/bird names like the top entries' response lists
+const CALLSIGNS = [
+  'TARPON 38', 'TARPON 11', 'KITE-1', 'MARLIN-3', 'CORAL-48', 'CORAL-85',
+  'HERON 2', 'MAKO 6', 'GULL 8', 'BASTION 3', 'OSPREY 1', 'PELICAN-11',
+  'GECKO-25', 'BARRACUDA-18', 'TAC-45', 'PIER 5', 'TIDE 37', 'TIDE 2',
+  'TIDE 6', 'REEF 9', 'SURGE 4', 'DORADO 7',
+];
 
 function poolTexture() {
   const c = document.createElement('canvas');
@@ -43,6 +56,20 @@ export class PoliceSystem {
     this.flashTimer = 0;
     this.nearby = false;
     this._poolTex = poolTexture();
+    // v8: every patrol car gets a real Bay PD callsign, handed out in order
+    // so the response list reads like the top entries' (TARPON 38, KITE-1…)
+    this._callsignIdx = 0;
+  }
+
+  // v8: drop one wanted star (Mira's SWAP PLATES crew ability) — the PD
+  // stands down a notch, roadblock and heli included if the heat falls low
+  dropStar() {
+    if (this.wanted <= 0) return false;
+    this.wanted -= 1;
+    this.heatTimer = 0;
+    if (this.wanted < 4) this.clearRoadblock();
+    this._syncUnits();
+    return true;
   }
 
   get stars() { return this.wanted; }
@@ -162,7 +189,10 @@ export class PoliceSystem {
     pool.rotation.x = -Math.PI / 2;
     pool.position.set(mesh.position.x, 0.06, mesh.position.z);
     this.scene.add(pool);
-    this.cars.push({ mesh, speed: 0, heading: 0, light, lightTimer: this.rng.next(), pool });
+    // v8: a real callsign, handed out in order from the pool
+    const callsign = CALLSIGNS[this._callsignIdx % CALLSIGNS.length];
+    this._callsignIdx += 1;
+    this.cars.push({ mesh, speed: 0, heading: 0, light, lightTimer: this.rng.next(), pool, callsign });
   }
 
   _spawnCop() {

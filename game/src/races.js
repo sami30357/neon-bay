@@ -1,3 +1,6 @@
+// v8: Solmara Bay — re-authored in this session under recording 01a1f524 (2026-11-20).
+// The races still run at the pier flag, and Job 11's boardwalk run is a
+// mission, not a race.
 // v7: Sun-Kissed Bay — street races, a new gameplay system, under recording
 // 01a1f27b. Three checkpoint races start at the checkered flag on the pier
 // (x:-168, z:120): drive the rings in order, beat the par for the full payout,

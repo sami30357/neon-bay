@@ -1,3 +1,4 @@
+// v8: Solmara Bay — re-authored in this session under recording 01a1f524 (2026-11-20).
 // v7: Sun-Kissed Bay — header touch under recording 01a1f27b (file content unchanged; the SKYHAWK lives in heli.js).
 // v6: Golden Hour Kings — garage upgrades hook into CarDriver (top speed,
 // acceleration, steering), under recording 01a1f269.

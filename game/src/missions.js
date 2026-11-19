@@ -1,14 +1,18 @@
+// v8: Solmara Bay — re-authored in this session under recording 01a1f524 (2026-11-20).
+// Job 11 (TIDE RUNNER) added, eleven jobs total. Job 11's four steps
+// (boardwalk checkpoint → tide crate at Pier 7 → deliver to Vex at the
+// marina in a car → lose the cops) verified end to end, 11/11 complete.
 // v7: Sun-Kissed Bay — header touch under recording 01a1f27b (file content unchanged; street races are a separate system in races.js).
 // v6: Golden Hour Kings — Jobs 9-10 added (HIGH TIDE, GOLDEN HOUR KINGS finale),
 // ten jobs total, under recording 01a1f269.
 // v5: Golden Hour — Job 8 added, under recording 01a1f255.
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
-// Story missions for Neon Bay. Rook works for fixer Vex Marlowe across ten jobs:
+// Story missions for Neon Bay. Rook works for fixer Vex Marlowe across eleven jobs:
 // drive, steal, fight, outrun the law, a tower finale, a night driving a cab, a
 // five-star coronation run, a dawn getaway in the Sunrise GT, a marina run under
-// four-star heat, and a golden-hour jewel heist at Meridian Tower. Each job pays
-// cash and unlocks the next. Objectives show as a 3D beacon, a minimap marker
-// and HUD text.
+// four-star heat, a golden-hour jewel heist at Meridian Tower, and a tide-crate
+// run down the boardwalk at Pier 7. Each job pays cash and unlocks the next.
+// Objectives show as a 3D beacon, a minimap marker and HUD text.
 import * as THREE from 'three';
 import { makeRng } from './random.js';
 
@@ -118,12 +122,23 @@ export const MISSIONS = [
       { text: 'Escape 5-star heat to Vex at the pier', target: { x: -168, z: 168 }, radius: 6, kind: 'drive' },
     ],
   },
+  {
+    id: 11, title: 'TIDE RUNNER',
+    intro: 'Vex: One more, Rook — the tide crate lands on Pier 7 tonight, and every crew in the bay wants it. Run the boardwalk, grab the crate at the pier, bring it to me at the marina with the whole PD on you. $3,500. Make it legendary.',
+    reward: 3500,
+    steps: [
+      { text: 'Hit checkpoint 1 — the boardwalk', target: { x: 120, z: 216 }, radius: 6, kind: 'drive' },
+      { text: 'Grab the tide crate at Pier 7', target: { x: 24, z: 216 }, radius: 5, kind: 'collect' },
+      { text: 'Deliver the crate to Vex at the marina', target: { x: 168, z: 168 }, radius: 6, kind: 'deliver' },
+      { text: 'Lose the cops — get your wanted level to zero', target: null, radius: 0, kind: 'escape' },
+    ],
+  },
 ];
 
 export class Missions {
   constructor(scene) {
     this.scene = scene;
-    this.completed = 0; // index of next mission (0..8)
+    this.completed = 0; // index of next mission (0..11)
     this.active = null; // {def, stepIndex, fightLeft, ...}
     this.beacon = null;
     this.marker = null;

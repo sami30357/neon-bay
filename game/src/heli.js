@@ -1,3 +1,7 @@
+// v8: Solmara Bay — re-authored in this session under recording 01a1f524 (2026-11-20).
+// The SKYHAWK now flies out over the bay (south bound z 240 → 320) and the
+// exit guard refuses to step out over deep water (z > 252), so the heli owns
+// the sky over Solmara Bay but never strands Rook in the sea.
 // v7: Sun-Kissed Bay — the flyable player helicopter ("SKYHAWK", gold/white),
 // under recording 01a1f27b. Built on the police helicopter's shape (body,
 // glass, boom, fin, skids, main + tail rotors, beacon) with its own livery:
@@ -132,7 +136,9 @@ export class HeliDriver {
     if (this.y < minY) { this.y = minY; if (this.vy < 0) this.vy = 0; }
     if (this.y > 120) { this.y = 120; if (this.vy > 0) this.vy = 0; }
     this.x = Math.max(-240, Math.min(240, this.x));
-    this.z = Math.max(-240, Math.min(240, this.z));
+    // v8: the heli can fly out over the bay (z to 320) — the waterline stops
+    // everyone else, but the SKYHAWK owns the sky over Solmara Bay
+    this.z = Math.max(-240, Math.min(320, this.z));
     this._syncMesh();
     // rotors spin, beacon blinks, nose dips a touch with speed
     this.phase += dt;

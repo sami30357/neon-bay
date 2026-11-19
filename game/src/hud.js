@@ -1,3 +1,11 @@
+// v8: Solmara Bay — re-authored in this session under recording 01a1f524 (2026-11-20).
+// The HUD's v8 work is the crew panel (Mira / Zio / Kiki canvas portraits
+// with key + cooldown badges), the Bay PD response list with named callsigns,
+// role chips (RAMMING / FLANKING / SPOTLIGHT / ROADBLOCK / CLOSING IN /
+// PURSUIT) and a header carrying unit count + stars + IN SIGHT / SEARCHING /
+// EYES OUT, the district label under the minimap, respect rank names
+// (ROOKIE / DOCK HAND / FIXER / SHOT CALLER), and the minimap's coast —
+// sand strip, bay and pier line along its south edge.
 // v7: Sun-Kissed Bay — HELICOPTER gear readout (HOVER / AIRBORNE), under recording 01a1f27b.
 // v6: Golden Hour Kings — weapon readout + garage/shop panels, under recording 01a1f269.
 // v5: Golden Hour — game clock (time + phase) in the radio panel, under recording 01a1f255.
@@ -42,8 +50,17 @@ export class HUD {
     this.radioSongEl = document.getElementById('radioSong');
     this.clockEl = document.getElementById('clockLine'); // v5: game clock
     this.policeListEl = document.getElementById('policeList');
+    this.policeTitleEl = document.getElementById('policeTitle'); // v8: unit count + stars
     this.respectBarEl = document.getElementById('respectBar');
     this.respectPctEl = document.getElementById('respectPct');
+    this.respectRankEl = document.getElementById('respectRank'); // v8: ROOKIE → SHOT CALLER
+    // v8: crew panel — three faces, three abilities, three cooldowns
+    this.crewEls = [0, 1, 2].map((i) => ({
+      cd: document.getElementById(`crewCd${i}`),
+      row: document.getElementById(`crewRow${i}`),
+    }));
+    this.districtNameEl = document.getElementById('districtName'); // v8: where you are
+    this.districtStandingEl = document.getElementById('districtStanding');
     // v6: weapon readout + garage/shop panels
     this.weaponNameEl = document.getElementById('weaponName');
     this.weaponAmmoEl = document.getElementById('weaponAmmo');
@@ -57,6 +74,7 @@ export class HUD {
     this.feedLines = [];
     this._cardTimer = 0;
     this._drawVexPortrait();
+    this._drawCrewPortraits(); // v8: Mira, Zio, Kiki
   }
 
   show() { this.el.classList.add('on'); }
@@ -105,6 +123,27 @@ export class HUD {
     const p = Math.max(0, Math.min(100, Math.round(pct)));
     if (this.respectBarEl) this.respectBarEl.style.width = `${p}%`;
     if (this.respectPctEl) this.respectPctEl.textContent = `${p}%`;
+    // v8: a rank name with the number, like the top entries' RESPECT LV 4 · FIXER
+    if (this.respectRankEl) {
+      this.respectRankEl.textContent = p < 25 ? 'ROOKIE' : p < 50 ? 'DOCK HAND' : p < 75 ? 'FIXER' : 'SHOT CALLER';
+    }
+  }
+  // v8: district label under the minimap — "SOLMARA STRAND · NEUTRAL · 58%"
+  setDistrict(name, standing) {
+    if (this.districtNameEl) this.districtNameEl.textContent = name;
+    if (this.districtStandingEl) this.districtStandingEl.textContent = standing;
+  }
+  // v8: crew cooldowns — each row shows its key + READY or the seconds left
+  setCrew(states) {
+    if (!states) return;
+    const keys = ['Z', 'X', 'C'];
+    states.forEach((s, i) => {
+      const el = this.crewEls[i];
+      if (!el || !el.cd) return;
+      el.cd.textContent = s.cd > 0 ? `${keys[i]} · ${Math.ceil(s.cd)}s` : `${keys[i]} · READY`;
+      el.cd.classList.toggle('cooling', s.cd > 0);
+      if (el.row) el.row.classList.toggle('cooling', s.cd > 0);
+    });
   }
   // v6: weapon wheel readout — name + ammo (∞ for the pistol)
   setWeapon(name, ammoLabel) {
@@ -133,16 +172,18 @@ export class HUD {
   // v6: AMMO-NATION shop panel
   showShop() { if (this.shopEl) this.shopEl.style.display = 'block'; }
   hideShop() { if (this.shopEl) this.shopEl.style.display = 'none'; }
-  // Bay PD response list: [{name, dist}] — named units with distances in metres
-  setPoliceList(units) {
+  // Bay PD response list: [{name, role, dist}] — named units with a role chip
+  // and a distance, like the top entries' dispatch panels. header carries the
+  // unit count, the stars and the IN SIGHT / SEARCHING state.
+  setPoliceList(units, header) {
     if (!this.policeListEl) return;
+    if (this.policeTitleEl && header) this.policeTitleEl.textContent = header;
     if (!units || units.length === 0) {
       this.policeListEl.innerHTML = '<div class="unit">No units responding</div>';
       return;
     }
-    // v6: five rows so the helicopter + roadblock both fit above the nearest units
-    this.policeListEl.innerHTML = units.slice(0, 5).map((u) =>
-      `<div class="unit"><b>${u.name}</b> — ${u.dist}</div>`).join('');
+    this.policeListEl.innerHTML = units.map((u) =>
+      `<div class="unit"><b>${u.name}</b>${u.role ? ` <span class="role role-${u.role.toLowerCase().replace(/ /g, '-')}">${u.role}</span>` : ''} <span class="dist">${u.dist}</span></div>`).join('');
   }
 
   // big center card that announces a job (or a completion); holdMs keeps it up
@@ -243,6 +284,86 @@ export class HUD {
     g.strokeRect(0.5, 0.5, 63, 63);
   }
 
+  // v8: the crew — Mira (driver, teal hair), Zio (mechanic, orange cap),
+  // Kiki (lookout, purple hair + shades). Same canvas-paint style as Vex.
+  _drawCrewPortraits() {
+    const painters = [this._paintMira, this._paintZio, this._paintKiki];
+    painters.forEach((paint, i) => {
+      const c = document.getElementById(`crewPortrait${i}`);
+      if (!c) return;
+      const g = c.getContext('2d');
+      g.save();
+      g.scale(32 / 64, 32 / 64);
+      paint.call(this, g);
+      g.restore();
+    });
+  }
+
+  _paintMira(g) {
+    g.fillStyle = '#0b0e1a'; g.fillRect(0, 0, 64, 64);
+    const grad = g.createLinearGradient(0, 0, 0, 64);
+    grad.addColorStop(0, '#0a3a3a'); grad.addColorStop(1, '#0b0e1a');
+    g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+    g.fillStyle = '#00b4d8';
+    for (let i = 0; i < 5; i++) g.fillRect(4 + i * 12, 44 + (i % 2) * 6, 4, 14);
+    g.fillStyle = '#00b4d8';
+    g.beginPath(); g.arc(32, 26, 19, Math.PI, 0); g.fill();
+    g.fillRect(13, 24, 8, 26); g.fillRect(43, 24, 8, 26);
+    g.fillStyle = '#c98f6a';
+    g.beginPath(); g.arc(32, 32, 13, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#0a0c12';
+    g.fillRect(20, 29, 10, 5); g.fillRect(34, 29, 10, 5);
+    g.fillStyle = '#ff5e3a'; g.fillRect(27, 43, 10, 2);
+    g.fillStyle = '#14204a';
+    g.beginPath(); g.moveTo(14, 64); g.lineTo(32, 48); g.lineTo(50, 64); g.closePath(); g.fill();
+    g.strokeStyle = '#00b4d8'; g.lineWidth = 1; g.strokeRect(0.5, 0.5, 63, 63);
+  }
+
+  _paintZio(g) {
+    g.fillStyle = '#0b0e1a'; g.fillRect(0, 0, 64, 64);
+    const grad = g.createLinearGradient(0, 0, 0, 64);
+    grad.addColorStop(0, '#3a2a0a'); grad.addColorStop(1, '#0b0e1a');
+    g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+    g.fillStyle = '#ff8a3d';
+    for (let i = 0; i < 5; i++) g.fillRect(4 + i * 12, 44 + (i % 2) * 6, 4, 14);
+    // orange cap
+    g.fillStyle = '#ff6a1a';
+    g.beginPath(); g.arc(32, 24, 15, Math.PI, 0); g.fill();
+    g.fillRect(14, 22, 36, 4);
+    g.fillRect(30, 20, 22, 4); // brim
+    g.fillStyle = '#8a5a3a';
+    g.beginPath(); g.arc(32, 33, 13, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#0a0c12';
+    g.fillRect(20, 30, 10, 5); g.fillRect(34, 30, 10, 5);
+    // stubble
+    g.fillStyle = '#2a1a10'; g.fillRect(24, 42, 16, 5);
+    g.fillStyle = '#2c3a2c';
+    g.beginPath(); g.moveTo(14, 64); g.lineTo(32, 48); g.lineTo(50, 64); g.closePath(); g.fill();
+    g.strokeStyle = '#ff8a3d'; g.lineWidth = 1; g.strokeRect(0.5, 0.5, 63, 63);
+  }
+
+  _paintKiki(g) {
+    g.fillStyle = '#0b0e1a'; g.fillRect(0, 0, 64, 64);
+    const grad = g.createLinearGradient(0, 0, 0, 64);
+    grad.addColorStop(0, '#2a0a3a'); grad.addColorStop(1, '#0b0e1a');
+    g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+    g.fillStyle = '#b300ff';
+    for (let i = 0; i < 5; i++) g.fillRect(4 + i * 12, 44 + (i % 2) * 6, 4, 14);
+    // long purple hair
+    g.fillStyle = '#b300ff';
+    g.beginPath(); g.arc(32, 26, 19, Math.PI, 0); g.fill();
+    g.fillRect(11, 24, 9, 34); g.fillRect(44, 24, 9, 34);
+    g.fillStyle = '#f2c9a0';
+    g.beginPath(); g.arc(32, 32, 13, 0, Math.PI * 2); g.fill();
+    // shades
+    g.fillStyle = '#0a0c12';
+    g.fillRect(19, 28, 11, 6); g.fillRect(34, 28, 11, 6); g.fillRect(29, 30, 6, 2);
+    g.fillStyle = '#ff2d78'; g.fillRect(27, 43, 10, 2);
+    g.fillStyle = '#3a0a3a';
+    g.beginPath(); g.moveTo(14, 64); g.lineTo(32, 48); g.lineTo(50, 64); g.closePath(); g.fill();
+    g.strokeStyle = '#b300ff'; g.lineWidth = 1; g.strokeRect(0.5, 0.5, 63, 63);
+  }
+
   // live minimap: north-up, city scaled to the canvas
   drawMinimap(view) {
     const ctx = this.mapCtx;
@@ -253,6 +374,21 @@ export class HUD {
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = '#070b18';
     ctx.fillRect(0, 0, W, H);
+    // v8: the coast — sand strip and the bay along the bottom edge, the pier
+    // as a line out into the water
+    const beachY = toY(224);
+    if (beachY < H) {
+      ctx.fillStyle = '#c9a86a';
+      ctx.fillRect(0, Math.max(0, beachY), W, H - Math.max(0, beachY));
+      ctx.fillStyle = '#1a7fb0';
+      ctx.fillRect(0, Math.max(0, toY(252)), W, H - Math.max(0, toY(252)));
+      ctx.strokeStyle = '#e8d29a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(toX(24), Math.max(0, toY(224)));
+      ctx.lineTo(toX(24), H);
+      ctx.stroke();
+    }
     // buildings
     ctx.fillStyle = '#1b2340';
     for (const b of view.buildings) {

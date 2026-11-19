@@ -1,3 +1,11 @@
+// v8: Solmara Bay — re-authored in this session under recording 01a1f524 (2026-11-20):
+// the waterfront is this file's v8 work — a 900-wide scrolling water plane
+// (z 252..550) with a pulsing foam line, a 28-deep sand beach with umbrellas,
+// towels and beachgoers, Pier 7 (88-long deck, posts, rails, shack, sign),
+// four bobbing boats and four green horizon islands, palms along the
+// boardwalk and beach edge, a noon opening (timeOfDay 12, dayFactor 1), the
+// south skyline sector kept open so the bay reads, and resolveCircle's
+// waterline wall at z=250 that nothing walks or drives past.
 // v7: Sun-Kissed Bay — bright sun-soaked day look (two-texture towers: light
 // face + lit-window glow map), ground helipad near the marina, under recording 01a1f27b.
 // v6: Golden Hour Kings — the game opens at golden hour (17:30), under recording 01a1f269.
@@ -20,6 +28,14 @@ export const STREET_STEP = 48;
 export const STREET_HALF = 6;
 export const CITY_EXTENT = 216; // streets run from -216 to +216
 export const ROAD_Y = 0.02;
+
+// v8: Solmara Bay — the south edge of the city is a real coast. The coastal
+// road is the z=216 street; the beach runs z 224–252, the water from z 252
+// out to the horizon, and Pier 7 (x=24) reaches into the bay. Nothing walks
+// or drives past z=250 — resolveCircle enforces the waterline.
+export const BEACH_START = 224;
+export const WATER_START = 252;
+export const PIER_X = 24;
 
 // v5: one keyframe per phase of the day. setTimeOfDay(t) lerps between the two
 // neighbours, so the sky, fog, lights, stars, sun/moon, rain and neon all move
@@ -150,6 +166,54 @@ function glowSpriteTexture() {
   return new THREE.CanvasTexture(c);
 }
 
+// v8: the bay — turquoise water with wave streaks, scrolled in update() so
+// the sea shimmers instead of sitting still
+function waterTexture() {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#2fa8c9'; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 22; i++) {
+    g.fillStyle = `rgba(16, 90, 130, ${0.1 + Math.random() * 0.14})`;
+    g.beginPath();
+    g.ellipse(Math.random() * 256, Math.random() * 256, 20 + Math.random() * 42, 8 + Math.random() * 16, Math.random() * Math.PI, 0, Math.PI * 2);
+    g.fill();
+  }
+  for (let i = 0; i < 42; i++) {
+    g.strokeStyle = 'rgba(255,255,255,0.5)';
+    g.lineWidth = 1 + Math.random() * 2;
+    g.beginPath();
+    const y = Math.random() * 256, x = Math.random() * 256, len = 20 + Math.random() * 42;
+    g.moveTo(x, y);
+    g.quadraticCurveTo(x + len / 2, y + (Math.random() - 0.5) * 8, x + len, y + (Math.random() - 0.5) * 6);
+    g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(10, 8);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// v8: speckled sand for the beach strip
+function sandTexture() {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#e8d29a'; g.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 500; i++) {
+    g.fillStyle = Math.random() < 0.5 ? 'rgba(180,150,90,0.5)' : 'rgba(255,244,200,0.5)';
+    g.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(24, 2);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 export class City {
   constructor(scene) {
     this.scene = scene;
@@ -165,6 +229,7 @@ export class City {
     this.flickerSigns = []; // {mat, phase}
     this.clouds = [];
     this.splashes = []; // {mesh, life}
+    this.boats = []; // v8: {group, phase, baseY} — bobbing on the bay
     this.tallest = null;
     for (let i = 0; i <= 9; i++) this.streetPositions.push(-CITY_EXTENT + i * STREET_STEP);
     this._buildLights();
@@ -182,7 +247,8 @@ export class City {
     this._buildSkyline();
     this._buildHelipad();
     this._buildGroundHelipad(); // v7: the player helicopter's home, near the marina
-    this.setTimeOfDay(17.5); // v6: the game opens at golden hour, 17:30 — bright first impression
+    this._buildWaterfront(); // v8: ocean + beach + Pier 7 + palms + boats + islands
+    this.setTimeOfDay(12); // v8: the game opens at bright noon — sun-soaked first impression
   }
 
   // v5: day-night cycle — t is game hours in [0, 24). Lerps the whole look of
@@ -274,8 +340,8 @@ export class City {
     this.signMats = [];
     this.buildingMats = [];
     this.streetLights = [];
-    this.timeOfDay = 17.5; // v6: golden-hour open
-    this.dayFactor = 0.55;
+    this.timeOfDay = 12; // v8: bright-noon open
+    this.dayFactor = 1;
     this._c1 = new THREE.Color();
     this._c2 = new THREE.Color();
   }
@@ -516,6 +582,271 @@ export class City {
     const cross = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 0.9), markMat);
     cross.position.set(spot.x, 0.28, spot.z);
     this.scene.add(cross);
+  }
+
+  // v8: the Solmara Bay waterfront — ocean, beach, Pier 7, palms, boats,
+  // islands. The south edge of the grid (z=216 street) is the boardwalk;
+  // everything past the beach is water the player can see but not enter.
+  _buildWaterfront() {
+    this._buildWater();
+    this._buildBeach();
+    this._buildPier();
+    this._buildBoats();
+    this._buildIslands();
+  }
+
+  _buildWater() {
+    const tex = waterTexture();
+    this.waterTex = tex;
+    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.15, metalness: 0.1 });
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(900, 300), mat);
+    water.rotation.x = -Math.PI / 2;
+    water.position.set(0, 0.08, WATER_START + 148); // z 252..550
+    this.scene.add(water);
+    this.water = water;
+    // foam line where the sea meets the sand, pulsing in update()
+    const foam = new THREE.Mesh(
+      new THREE.PlaneGeometry(560, 2.5),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }),
+    );
+    foam.rotation.x = -Math.PI / 2;
+    foam.position.set(0, 0.1, WATER_START - 1);
+    this.scene.add(foam);
+    this.foamMat = foam.material;
+  }
+
+  _buildBeach() {
+    // sand strip between the boardwalk and the water
+    const sand = new THREE.Mesh(
+      new THREE.PlaneGeometry(560, 28),
+      new THREE.MeshStandardMaterial({ map: sandTexture(), roughness: 1 }),
+    );
+    sand.rotation.x = -Math.PI / 2;
+    sand.position.set(0, 0.05, (BEACH_START + WATER_START) / 2); // z 224..252
+    this.scene.add(sand);
+    // umbrellas + towels along the sand
+    const umbrellaColors = [0xff5e3a, 0x00b4d8, 0xffd75e, 0xff2d78, 0x39ff88];
+    const spots = [[-120, 234], [-60, 242], [-30, 230], [60, 240], [110, 233], [150, 244], [-190, 238], [190, 238]];
+    spots.forEach(([x, z], i) => this._makeUmbrella(x, z, umbrellaColors[i % umbrellaColors.length]));
+    const towelColors = [0xff2d78, 0x00e5ff, 0xffd75e, 0x39ff88, 0xb300ff];
+    spots.forEach(([x, z], i) => {
+      const towel = new THREE.Mesh(
+        new THREE.BoxGeometry(1.7, 0.06, 0.9),
+        new THREE.MeshStandardMaterial({ color: towelColors[i % towelColors.length], roughness: 0.95 }),
+      );
+      towel.position.set(x + 2.4, 0.09, z + 1.2);
+      towel.rotation.y = this.rng.range(-0.4, 0.4);
+      this.scene.add(towel);
+    });
+    // beachgoers: a few static figures enjoying the sand
+    const skins = [0xe8b98a, 0xc98f6a, 0x8a5a3a, 0xf2c9a0];
+    const shirts = [0xff5e3a, 0x00b4d8, 0xffd75e, 0x39ff88, 0xff2d78, 0xffffff];
+    const goers = [[-118, 237], [-58, 245], [-28, 233], [62, 243], [112, 236], [152, 247]];
+    goers.forEach(([x, z], i) => {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.32, 0.4, 1.15, 8),
+        new THREE.MeshStandardMaterial({ color: shirts[i % shirts.length], roughness: 0.85 }),
+      );
+      body.position.y = 1.15;
+      g.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), new THREE.MeshStandardMaterial({ color: skins[i % skins.length], roughness: 0.7 }));
+      head.position.y = 2.0;
+      g.add(head);
+      g.position.set(x, 0, z);
+      g.rotation.y = this.rng.range(0, Math.PI * 2);
+      this.scene.add(g);
+    });
+    // palms: along the boardwalk (north side of the z=216 street) and the beach edge
+    for (let x = -204; x <= 204; x += 24) {
+      if (Math.abs(x - PIER_X) < 12) continue; // the pier mouth stays clear
+      this._makePalm(x, 207, 1, (x % 48 === 0 ? 0.08 : -0.06));
+      if (x % 48 === 0) this._makePalm(x + 12, 228, 0.9, 0.05);
+    }
+    this._makePalm(-100, 242, 1.1, 0.1);
+    this._makePalm(140, 246, 1, -0.08);
+    this._makePalm(-150, 230, 0.95, 0.06);
+  }
+
+  _makePalm(x, z, scale = 1, lean = 0) {
+    const g = new THREE.Group();
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.16, 0.3, 6, 8),
+      new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: 0.9 }),
+    );
+    trunk.position.y = 3;
+    g.add(trunk);
+    const frondMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.8, side: THREE.DoubleSide });
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      const frond = new THREE.Mesh(new THREE.ConeGeometry(0.55, 3.4, 4), frondMat);
+      frond.scale.set(1, 1, 0.18); // flattened, leaf-like
+      frond.position.set(Math.cos(a) * 1.2, 6.2, Math.sin(a) * 1.2);
+      frond.rotation.set(Math.sin(a) * 1.1, 0, -Math.cos(a) * 1.1);
+      g.add(frond);
+    }
+    const nutMat = new THREE.MeshStandardMaterial({ color: 0x4a3220, roughness: 0.9 });
+    for (const [nx, nz] of [[0.3, 0.2], [-0.25, 0.3]]) {
+      const nut = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), nutMat);
+      nut.position.set(nx, 5.7, nz);
+      g.add(nut);
+    }
+    g.position.set(x, 0, z);
+    g.rotation.z = lean;
+    g.scale.setScalar(scale);
+    this.scene.add(g);
+    return g;
+  }
+
+  _makeUmbrella(x, z, color) {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6),
+      new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: 0.7 }),
+    );
+    pole.position.y = 1.2;
+    g.add(pole);
+    const canopy = new THREE.Mesh(
+      new THREE.ConeGeometry(1.9, 0.9, 12),
+      new THREE.MeshStandardMaterial({ color, roughness: 0.8 }),
+    );
+    canopy.position.y = 2.6;
+    g.add(canopy);
+    const cap = new THREE.Mesh(
+      new THREE.ConeGeometry(1.92, 0.3, 12),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }),
+    );
+    cap.position.y = 2.78;
+    g.add(cap);
+    g.position.set(x, 0, z);
+    g.rotation.z = 0.08;
+    this.scene.add(g);
+    return g;
+  }
+
+  // Pier 7: a wooden pier from the boardwalk into the bay, with posts, rails
+  // and a shack at the end. The deck is scenery — the player walks the
+  // boardwalk, not the planks (the waterline stops them at z=250).
+  _buildPier() {
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x8a6a42, roughness: 0.9 });
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(8, 0.5, 88), deckMat);
+    deck.position.set(PIER_X, 0.15, 268); // z 224..312
+    this.scene.add(deck);
+    // plank seams across the deck
+    const seamMat = new THREE.MeshBasicMaterial({ color: 0x5c4630 });
+    for (let z = 228; z <= 308; z += 8) {
+      const seam = new THREE.Mesh(new THREE.PlaneGeometry(7.8, 0.25), seamMat);
+      seam.rotation.x = -Math.PI / 2;
+      seam.position.set(PIER_X, 0.41, z);
+      this.scene.add(seam);
+    }
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x5c4630, roughness: 0.9 });
+    for (let z = 230; z <= 308; z += 9.75) {
+      for (const sx of [-3.6, 3.6]) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 3.4, 8), postMat);
+        post.position.set(PIER_X + sx, -1.2, z);
+        this.scene.add(post);
+      }
+    }
+    for (const sx of [-3.8, 3.8]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 88), postMat);
+      rail.position.set(PIER_X + sx, 1.15, 268);
+      this.scene.add(rail);
+      for (let z = 228; z <= 308; z += 10) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.0, 0.18), postMat);
+        post.position.set(PIER_X + sx, 0.7, z);
+        this.scene.add(post);
+      }
+    }
+    // shack at the end of the pier
+    const shack = new THREE.Mesh(
+      new THREE.BoxGeometry(5, 3, 4),
+      new THREE.MeshStandardMaterial({ color: 0x2e6b8a, roughness: 0.8 }),
+    );
+    shack.position.set(PIER_X, 1.9, 304);
+    this.scene.add(shack);
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(3.6, 1.8, 4),
+      new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.8 }),
+    );
+    roof.position.set(PIER_X, 4.2, 304);
+    roof.rotation.y = Math.PI / 4;
+    this.scene.add(roof);
+    // PIER 7 sign on the shack, facing the city
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 80;
+    const g = c.getContext('2d');
+    g.fillStyle = '#05060f'; g.fillRect(0, 0, 256, 80);
+    g.strokeStyle = '#ffd75e'; g.lineWidth = 5; g.strokeRect(4, 4, 248, 72);
+    g.fillStyle = '#ffd75e'; g.font = '900 44px Arial'; g.textAlign = 'center';
+    g.fillText('PIER 7', 128, 56);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(5, 1.6),
+      new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, transparent: true }),
+    );
+    sign.position.set(PIER_X, 2.4, 301.8);
+    sign.rotation.y = Math.PI;
+    this.scene.add(sign);
+  }
+
+  _buildBoats() {
+    this._makeBoat(32, 285, 0xff5e3a, 1); // moored beside the pier
+    this._makeBoat(120, 340, 0x00b4d8, 1.1);
+    this._makeBoat(-90, 380, 0xffd75e, 0.9);
+    this._makeBoat(-170, 310, 0xff2d78, 1.2);
+  }
+
+  _makeBoat(x, z, color, scale = 1) {
+    const g = new THREE.Group();
+    const hullMat = new THREE.MeshStandardMaterial({ color: 0xf2f4f8, roughness: 0.4 });
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(5.2, 1.1, 2.4), hullMat);
+    hull.position.y = 0.5;
+    g.add(hull);
+    const bow = new THREE.Mesh(new THREE.ConeGeometry(1.2, 2.2, 4), hullMat);
+    bow.rotation.x = Math.PI / 2;
+    bow.rotation.y = Math.PI / 4;
+    bow.scale.set(1, 1, 0.5);
+    bow.position.set(0, 0.5, 3.4);
+    g.add(bow);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(5.24, 0.3, 2.44), new THREE.MeshBasicMaterial({ color }));
+    stripe.position.y = 0.75;
+    g.add(stripe);
+    const cabin = new THREE.Mesh(
+      new THREE.BoxGeometry(2.2, 0.9, 1.8),
+      new THREE.MeshStandardMaterial({ color: 0x1a2030, roughness: 0.3, metalness: 0.4 }),
+    );
+    cabin.position.set(-0.4, 1.4, 0);
+    g.add(cabin);
+    const mast = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6),
+      new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7 }),
+    );
+    mast.position.set(1.2, 1.8, 0);
+    g.add(mast);
+    g.position.set(x, 0.1, z);
+    g.rotation.y = this.rng.range(0, Math.PI * 2);
+    g.scale.setScalar(scale);
+    this.scene.add(g);
+    this.boats.push({ group: g, phase: this.rng.range(0, Math.PI * 2), baseY: 0.1 });
+    return g;
+  }
+
+  // distant green islands on the horizon, so the bay is not an empty plane
+  _buildIslands() {
+    const isles = [[300, 420, 34], [-280, 440, 40], [80, 480, 28], [-80, 470, 22]];
+    for (const [x, z, r] of isles) {
+      const mound = new THREE.Mesh(
+        new THREE.SphereGeometry(r, 16, 10),
+        new THREE.MeshStandardMaterial({ color: 0x2e7d46, roughness: 1 }),
+      );
+      mound.scale.y = 0.18;
+      mound.position.set(x, 0, z);
+      this.scene.add(mound);
+      this._makePalm(x - r * 0.3, z - r * 0.2, 1.2, 0.1);
+      this._makePalm(x + r * 0.4, z + r * 0.1, 1, -0.08);
+    }
   }
 
   _buildSigns() {
@@ -806,6 +1137,17 @@ export class City {
   // per-frame city animation: rain, splashes, beacons, flickering signs, clouds
   update(dt, time, center) {
     this._updateRain(dt, center);
+    // v8: the sea shimmers, the boats bob, the foam breathes
+    if (this.waterTex) {
+      this.waterTex.offset.x += dt * 0.008;
+      this.waterTex.offset.y += dt * 0.004;
+    }
+    for (const b of this.boats) {
+      b.group.position.y = b.baseY + Math.sin(time * 0.9 + b.phase) * 0.18;
+      b.group.rotation.z = Math.sin(time * 0.7 + b.phase) * 0.04;
+      b.group.rotation.x = Math.cos(time * 0.6 + b.phase) * 0.02;
+    }
+    if (this.foamMat) this.foamMat.opacity = 0.4 + 0.18 * Math.sin(time * 1.3);
     for (const b of this.beacons) {
       b.mesh.visible = (Math.sin(time * 1.6 + b.phase) > -0.2);
     }
@@ -857,10 +1199,12 @@ export class City {
 
   _buildSkyline() {
     // distant dark towers ringing the playable city, for depth in wide shots
+    // v8: no towers in the south sector — that is open water now, not land
     const rng = makeRng(99);
     const mat = new THREE.MeshBasicMaterial({ color: 0x0a0c1e, fog: true });
     for (let i = 0; i < 46; i++) {
       const angle = (i / 46) * Math.PI * 2 + rng.range(-0.05, 0.05);
+      if (Math.sin(angle) > 0.2) continue; // south = the bay, keep it open
       const r = 300 + rng.range(0, 120);
       const w = rng.range(18, 42), h = rng.range(40, 130), d = rng.range(18, 42);
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -883,6 +1227,8 @@ export class City {
         z = cz + (dz / d) * radius;
       }
     }
+    // v8: the waterline — nothing walks or drives into the bay past the beach
+    if (z > 250) z = 250;
     return { x, z };
   }
 

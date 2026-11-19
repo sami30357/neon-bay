@@ -1,3 +1,7 @@
+// v8: Solmara Bay — real waterfront (water plane + beach + Pier 7 + boats),
+// bright-noon opening, crew of three with abilities, Job 11 TIDE RUNNER,
+// named Bay PD units with roles, district labels, re-authored in this
+// session under recording 01a1f524 (2026-11-20).
 // v7: Sun-Kissed Bay — flyable SKYHAWK helicopter, 3 street races, carjacking animation, sun-soaked day look, under recording 01a1f27b.
 // v6: Golden Hour Kings — 10 jobs, garage upgrades, weapon wheel, roadblocks, shop + safehouse, golden-hour opening, under recording 01a1f269.
 // v5: Golden Hour — day-night cycle + Job 8 (Sunrise GT dawn getaway), under recording 01a1f255.
@@ -7,23 +11,29 @@
 // modules, three.js vendored under game/vendor/, no network request), and the program hands
 // it in. It copies game/ and screenshots/ from beside this file to /output and writes
 // /output/dossier.json, the summary the judge reads, with the vendored make.fun library.
-// NEON BAY v7: a rain-slick neon metropolis — an original open-world crime
-// game (city on foot and by car, traffic, pedestrians, car stealing, wanted level
-// and police with a searchlight helicopter at 4+ stars and roadblocks across the
-// road, ten story missions, garage upgrades, a weapon wheel, a shop and a
-// safehouse, a neon-orb side activity, combat, HUD with live minimap, start
-// screen, save, synthesized sound). v7 opens at golden hour, 17:30, and adds a
-// flyable gold/white SKYHAWK helicopter (parked on a ground helipad by the
-// marina — W/S thrust, A/D yaw, Space climb, Shift descend, rooftop
-// collision), three street races at the pier flag (PIER SPRINT, NEON LOOP,
-// BAY GRAND PRIX — checkpoint rings, par times, full or half payouts), a
-// carjacking animation (the driver gets pulled out and flees), a sun-soaked
-// day look (light tower facades with dark windows by day, lit windows by
-// night, brighter noon sky and streets), and a less blocky Rook (cap, shades,
-// shoes, belt, shirt panel, collar). v6 opens at golden hour, 17:30 — the first
-// thing you see is warm low sun over the skyline — and adds Jobs 9-10 (HIGH TIDE,
-// a marina run under four-star heat, and GOLDEN HOUR KINGS, stealing the Celeste
-// Crown jewel from Meridian Tower under five stars). v5 adds a full day-night
+// NEON BAY v8: a sun-soaked coastal open-world crime game (city on foot and by
+// car, traffic, pedestrians, car stealing, wanted level and police with a
+// searchlight helicopter at 4+ stars and roadblocks across the road, eleven story
+// missions, garage upgrades, a weapon wheel, a shop and a safehouse, a neon-orb
+// side activity, combat, HUD with live minimap, start screen, save, synthesized
+// sound). v8 opens at bright noon, 12:00, on the coast of Solmara Bay — a real
+// waterfront with a water plane and scrolling waves, a sand beach with umbrellas
+// and beachgoers, Pier 7 reaching out over the water, boats bobbing in the bay
+// and islands on the horizon — and adds a crew of three with abilities (Mira
+// swaps the plates to lose a star, Zio patches you up, Kiki spots every PD
+// unit), named Bay PD response units with role chips (RAMMING / FLANKING /
+// SPOTLIGHT / ROADBLOCK), district labels under the minimap, and Job 11 TIDE
+// RUNNER, a boardwalk run for the tide crate at Pier 7. v7 adds a flyable
+// gold/white SKYHAWK helicopter (parked on a ground helipad by the marina —
+// W/S thrust, A/D yaw, Space climb, Shift descend, rooftop collision, and it
+// can fly out over the bay but never steps out over the water), three street
+// races at the pier flag (PIER SPRINT, NEON LOOP, BAY GRAND PRIX — checkpoint
+// rings, par times, full or half payouts), a carjacking animation (the driver
+// gets pulled out and flees), a sun-soaked day look (light tower facades with
+// dark windows by day, lit windows by night, brighter noon sky and streets),
+// and a less blocky Rook (cap, shades, shoes, belt, shirt panel, collar). v6
+// adds Jobs 9-10 (HIGH TIDE, a marina run under four-star heat, and GOLDEN HOUR
+// KINGS, stealing the Celeste Crown jewel from Meridian Tower under five stars). v5 adds a full day-night
 // cycle — the city runs on a game clock (1 game-hour per 75 real seconds) through
 // night, dawn, day, golden hour and dusk, with the sky, fog, lights, stars, sun
 // and moon, rain and neon all shifting with the hour — plus Job 8 GOLDEN HOUR, a
