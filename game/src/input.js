@@ -1,72 +1,68 @@
-// v8: Solmara Bay — re-authored in this session under recording 01a1f524 (2026-11-20).
-// v7: Sun-Kissed Bay — header touch under recording 01a1f27b (file content unchanged; the helicopter reuses W/S/A/D/Space/Shift through this same input).
-// v6: Golden Hour Kings — header touch under recording 01a1f269 (file content unchanged).
-// v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
-// v3: re-applied under recording 01a1ee33 - v2 content unchanged.
-// Keyboard and mouse input for Neon Bay. Keys are tracked by code so the layout
-// never depends on the player's keyboard language. Mouse look uses pointer lock.
-// v2: arrow keys alias WASD (so driving works with either hand), and a key
-// press is also reported with its repeat state for held actions.
+// Solmara Bay — keyboard and mouse input.
+// One clear job: turn raw DOM events into a small state object the game reads
+// every frame. Keys are tracked by their code (KeyW, Space, …), so layouts
+// do not matter, and every press is also offered as a one-frame edge.
 export class Input {
-  constructor(canvas) {
+  constructor() {
     this.keys = new Set();
-    this.mouseDX = 0;
-    this.mouseDY = 0;
+    this.pressed = new Set();
+    this.mouseX = 0;
+    this.mouseY = 0;
     this.mouseDown = false;
-    this.pointerLocked = false;
-    this.canvas = canvas;
-    this.onKey = null; // (code) => void, for one-shot actions
-    this.onMouseDown = null; // () => void, for shooting
-
-    // arrow keys drive the same actions as WASD
-    this._aliases = {
-      ArrowUp: 'KeyW', ArrowDown: 'KeyS', ArrowLeft: 'KeyA', ArrowRight: 'KeyD',
+    this.mouseClicked = false;
+    this.anyKey = false;
+    this._onKeyDown = (e) => {
+      if (e.repeat) return;
+      this.keys.add(e.code);
+      this.pressed.add(e.code);
+      this.anyKey = true;
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) e.preventDefault();
     };
-
-    window.addEventListener('keydown', (event) => {
-      if (event.repeat) return;
-      this.keys.add(event.code);
-      const alias = this._aliases[event.code];
-      if (alias) this.keys.add(alias);
-      if (this.onKey) this.onKey(event.code);
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
-        event.preventDefault();
-      }
-    });
-    window.addEventListener('keyup', (event) => {
-      this.keys.delete(event.code);
-      const alias = this._aliases[event.code];
-      if (alias) this.keys.delete(alias);
-    });
-    window.addEventListener('blur', () => { this.keys.clear(); });
-    document.addEventListener('pointerlockchange', () => {
-      this.pointerLocked = document.pointerLockElement === canvas;
-    });
-    document.addEventListener('mousemove', (event) => {
-      if (!this.pointerLocked) return;
-      this.mouseDX += event.movementX || 0;
-      this.mouseDY += event.movementY || 0;
-    });
-    canvas.addEventListener('mousedown', (event) => {
-      if (event.button !== 0) return;
-      this.mouseDown = true;
-      if (!this.pointerLocked) canvas.requestPointerLock();
-      if (this.onMouseDown) this.onMouseDown();
-    });
-    window.addEventListener('mouseup', (event) => {
-      if (event.button === 0) this.mouseDown = false;
-    });
+    this._onKeyUp = (e) => { this.keys.delete(e.code); };
+    this._onMouseMove = (e) => { this.mouseX = e.clientX; this.mouseY = e.clientY; };
+    this._onMouseDown = (e) => { this.mouseDown = true; this.mouseClicked = true; };
+    this._onMouseUp = () => { this.mouseDown = false; };
+    this._onBlur = () => { this.keys.clear(); this.mouseDown = false; };
+    window.addEventListener('keydown', this._onKeyDown);
+    window.addEventListener('keyup', this._onKeyUp);
+    window.addEventListener('mousemove', this._onMouseMove);
+    window.addEventListener('mousedown', this._onMouseDown);
+    window.addEventListener('mouseup', this._onMouseUp);
+    window.addEventListener('blur', this._onBlur);
   }
 
   down(code) { return this.keys.has(code); }
-  axis(negative, positive) {
-    return (this.keys.has(positive) ? 1 : 0) - (this.keys.has(negative) ? 1 : 0);
+  // True only on the frame the key went down.
+  hit(code) { return this.pressed.has(code); }
+  // WASD / arrows as a -1..1 pair, already normalised by the caller.
+  moveAxes() {
+    let x = 0; let y = 0;
+    if (this.down('KeyA') || this.down('ArrowLeft')) x -= 1;
+    if (this.down('KeyD') || this.down('ArrowRight')) x += 1;
+    if (this.down('KeyW') || this.down('ArrowUp')) y += 1;
+    if (this.down('KeyS') || this.down('ArrowDown')) y -= 1;
+    return { x, y };
   }
-  consumeMouse() {
-    const dx = this.mouseDX, dy = this.mouseDY;
-    this.mouseDX = 0; this.mouseDY = 0;
-    return { dx, dy };
+  // Call once per frame, after the game has read the edges.
+  endFrame() {
+    this.pressed.clear();
+    this.mouseClicked = false;
+    this.anyKey = false;
   }
-  lockPointer() { if (!this.pointerLocked) this.canvas.requestPointerLock(); }
-  unlockPointer() { if (document.pointerLockElement) document.exitPointerLock(); }
+}
+
+// A second pass on input: mouse-look deltas and a helper the menus use to
+// catch a single keypress without holding it down.
+export function mouseDelta(input, last) {
+  const dx = input.mouseX - last.x;
+  const dy = input.mouseY - last.y;
+  last.x = input.mouseX;
+  last.y = input.mouseY;
+  return { dx, dy };
+}
+
+// True when any of the given codes was hit this frame.
+export function anyHit(input, codes) {
+  for (const c of codes) if (input.hit(c)) return true;
+  return false;
 }

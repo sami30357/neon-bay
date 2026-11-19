@@ -1,186 +1,227 @@
 <!doctype html>
-<!-- v8: Solmara Bay — real waterfront, crew, Job 11, bright-noon opening, re-authored in this session under recording 01a1f524 (2026-11-20). -->
-<!-- v7: Sun-Kissed Bay — helicopter + street races on the start screen + controls, under recording 01a1f27b. -->
-<!-- v6: Golden Hour Kings — weapon readout, garage + shop panels, 10 jobs on the start screen, under recording 01a1f269. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Neon Bay — a sun-soaked open-world crime game</title>
+<link rel="icon" href="data:,">
+<title>Solmara Bay — open-world crime</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #05060f; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0d18;
+    font-family: Arial, Helvetica, sans-serif; color: #f2f4f8; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .panel { position: absolute; background: rgba(8, 10, 20, 0.78); border: 1px solid rgba(255, 215, 94, 0.35);
+    border-radius: 8px; padding: 10px 12px; backdrop-filter: blur(3px); }
+  .gold { color: #ffd75e; }
+  /* Top-left: the mission. */
+  #mission-panel { top: 14px; left: 14px; min-width: 320px; max-width: 420px; }
+  #mission-title { font-size: 19px; font-weight: 900; letter-spacing: 0.5px; color: #ffd75e; }
+  #mission-stage { font-size: 14px; font-weight: 700; margin-top: 4px; }
+  #mission-bar-wrap { height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; margin: 7px 0 5px; overflow: hidden; }
+  #mission-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #ffd75e, #ff5e3a); border-radius: 3px; }
+  #mission-next { font-size: 12px; color: #9fd0f0; font-weight: 700; }
+  /* Top-right: money, stars, clock. */
+  #status-panel { top: 14px; right: 14px; text-align: right; min-width: 200px; }
+  #money { font-size: 30px; font-weight: 900; color: #39ff88; letter-spacing: 0.5px; }
+  #stars { font-size: 22px; letter-spacing: 2px; margin: 2px 0; }
+  #stars .star { color: rgba(255,255,255,0.25); }
+  #stars .star.on { color: #ffd75e; text-shadow: 0 0 8px rgba(255,215,94,0.8); }
+  #clock { font-size: 15px; font-weight: 700; color: #f2f4f8; }
+  #day { font-size: 12px; color: #9aa0ac; font-weight: 700; }
+  /* Right: police response. */
+  #police-panel { top: 150px; right: 14px; width: 250px; }
+  #police-panel h3 { margin: 0 0 4px; font-size: 13px; letter-spacing: 1px; color: #ff5e7a; }
+  #police-count { font-size: 12px; color: #f2f4f8; font-weight: 700; }
+  #police-state { font-size: 12px; color: #ffd75e; font-weight: 700; }
+  .pd-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+  .pd-name { font-weight: 900; }
+  .pd-role { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 3px; background: #ff2244; color: #fff; }
+  .pd-dist { color: #9fd0f0; font-weight: 700; }
+  .pd-more, .pd-none { font-size: 12px; color: #9aa0ac; padding-top: 4px; }
+  /* Right: crew. */
+  #crew-panel { top: 330px; right: 14px; width: 250px; display: flex; flex-direction: column; gap: 6px; }
+  .crew-row { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 6px;
+    background: rgba(255,255,255,0.06); border-left: 3px solid var(--cc, #fff); }
+  .crew-row.cooling { opacity: 0.55; }
+  .crew-face { width: 40px; height: 40px; border-radius: 6px; }
+  .crew-info { flex: 1; }
+  .crew-ability { font-size: 13px; font-weight: 900; }
+  .crew-sub { font-size: 11px; color: #9aa0ac; }
+  .crew-key { font-size: 15px; font-weight: 900; background: rgba(255,255,255,0.14);
+    border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; padding: 2px 7px; }
+  .cd { font-size: 12px; font-weight: 900; color: #ffd75e; }
+  /* Bottom-left: district, minimap, vitals. */
+  #district-panel { left: 14px; bottom: 14px; width: 250px; }
+  #district-name { font-size: 20px; font-weight: 900; color: #ffd75e; }
+  #district-street { font-size: 12px; color: #9fd0f0; font-weight: 700; }
+  #district-stand { font-size: 11px; color: #9aa0ac; font-weight: 700; margin-top: 3px; }
+  #rank-name { font-size: 13px; font-weight: 900; color: #39ff88; margin-top: 6px; }
+  #rank-bar-wrap { height: 5px; background: rgba(255,255,255,0.15); border-radius: 3px; overflow: hidden; margin-top: 3px; }
+  #rank-bar { height: 100%; width: 0%; background: #39ff88; }
+  #minimap { width: 190px; height: 190px; border-radius: 50%; border: 3px solid rgba(255,215,94,0.7);
+    margin-top: 10px; background: #1a2a3a; }
+  .vital { display: flex; align-items: center; gap: 8px; margin-top: 7px; font-size: 12px; font-weight: 900; }
+  .vital .bar-wrap { flex: 1; height: 9px; background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden; }
+  #health-bar { height: 100%; background: #39ff88; width: 100%; }
+  #armor-bar { height: 100%; background: #00b4d8; width: 0%; }
+  .vital span.num { width: 30px; text-align: right; }
+  /* Bottom-centre: dialogue. */
+  #dialogue { left: 50%; bottom: 18px; transform: translateX(-50%); width: 480px; max-width: 60vw;
+    display: none; align-items: center; gap: 10px; }
+  #dialogue.show { display: flex; }
+  #dialogue-face { width: 52px; height: 52px; border-radius: 8px; background: #223; }
+  #dialogue-name { font-size: 13px; font-weight: 900; color: #ffd75e; }
+  #dialogue-text { font-size: 14px; line-height: 1.35; margin-top: 2px; }
+  /* Bottom-right: speed, car, weapons, radio. */
+  #drive-panel { right: 14px; bottom: 14px; width: 260px; text-align: right; }
+  #speed-num { font-size: 46px; font-weight: 900; line-height: 1; }
+  #speed-unit { font-size: 13px; color: #9aa0ac; font-weight: 700; }
+  #car-name { font-size: 15px; font-weight: 900; color: #ffd75e; }
+  #car-cond { font-size: 12px; color: #9aa0ac; font-weight: 700; }
+  #car-cond-wrap { height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; overflow: hidden; margin: 5px 0 8px; }
+  #car-cond-bar { height: 100%; background: #39ff88; width: 100%; }
+  #weapons { display: flex; gap: 5px; justify-content: flex-end; margin-bottom: 6px; }
+  .wp { font-size: 11px; font-weight: 700; padding: 5px 7px; border-radius: 5px; background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12); text-align: center; }
+  .wp.active { background: #ffd75e; color: #111; border-color: #ffd75e; }
+  .wp-slot { display: block; font-size: 10px; color: #9aa0ac; }
+  .wp.active .wp-slot { color: #333; }
+  #radio-line { font-size: 12px; color: #00e5ff; font-weight: 700; }
+  /* Centre announcement card. */
+  #center-card { left: 50%; top: 22%; transform: translateX(-50%); text-align: center; display: none;
+    border-color: rgba(255,215,94,0.6); padding: 16px 30px; }
+  #center-card.show { display: block; }
+  #center-title { font-size: 30px; font-weight: 900; letter-spacing: 1px; color: #ffd75e; }
+  #center-sub { font-size: 15px; margin-top: 4px; }
+  /* Toast. */
+  #toast { left: 50%; bottom: 120px; transform: translateX(-50%); font-size: 14px; font-weight: 700;
+    display: none; padding: 8px 16px; }
+  #toast.show { display: block; }
+  /* Start, help, garage and shop overlays. */
+  .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; background: rgba(5, 8, 18, 0.82); z-index: 10; text-align: center; }
+  .overlay.hidden { display: none; }
+  .overlay h1 { font-size: 56px; margin: 0; letter-spacing: 2px; color: #ffd75e; text-shadow: 0 4px 24px rgba(255,215,94,0.4); }
+  .overlay h2 { font-size: 15px; color: #9fd0f0; font-weight: 700; margin: 6px 0 18px; letter-spacing: 2px; }
+  .overlay p { font-size: 15px; line-height: 1.6; max-width: 560px; margin: 4px 0; }
+  .overlay .keys { font-size: 14px; color: #c8ccd8; line-height: 1.9; }
+  .overlay .keys b { color: #ffd75e; }
+  #start-save { font-size: 13px; color: #39ff88; font-weight: 700; margin-top: 14px; }
+  .modal { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 420px;
+    background: rgba(8, 10, 20, 0.95); border: 1px solid rgba(255,215,94,0.5); border-radius: 10px;
+    padding: 16px; z-index: 9; }
+  .modal.hidden { display: none; }
+  .modal h2 { margin: 0 0 10px; font-size: 18px; color: #ffd75e; letter-spacing: 1px; }
+  .panel-row { display: flex; justify-content: space-between; width: 100%; background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12); color: #f2f4f8; border-radius: 6px; padding: 10px;
+    font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 6px; }
+  .panel-row:hover { background: rgba(255,215,94,0.18); }
+  .panel-price { color: #39ff88; }
+  .modal .hint { font-size: 12px; color: #9aa0ac; margin-top: 10px; }
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  /* ---------- HUD ---------- */
-  #hud { position: fixed; inset: 0; pointer-events: none; font-family: "Segoe UI", Arial, sans-serif; color: #eaf6ff; display: none; z-index: 5; }
-  #hud.on { display: block; }
-  .panel { background: rgba(5, 8, 20, 0.62); border: 1px solid rgba(0, 229, 255, 0.35); border-radius: 8px; padding: 8px 12px; text-shadow: 0 0 6px rgba(0,229,255,.6); }
-  #cashBox { position: absolute; top: 12px; left: 12px; font-size: 20px; font-weight: 700; }
-  #cashBox small { display: block; font-size: 11px; color: #8fd8ff; font-weight: 400; letter-spacing: 1px; }
-  #orbBox { margin-top: 4px; font-size: 12px; color: #7df9ff; letter-spacing: 1px; }
-  #weaponBox { margin-top: 4px; font-size: 12px; color: #ffd75e; letter-spacing: 1px; }
-  #healthBarWrap { width: 180px; height: 10px; background: rgba(255,255,255,.15); border-radius: 5px; margin-top: 6px; overflow: hidden; }
-  #healthBar { height: 100%; width: 100%; background: linear-gradient(90deg, #ff2d78, #ff7a3d); }
-  #wantedBox { position: absolute; top: 12px; right: 12px; font-size: 26px; letter-spacing: 4px; color: #2b3a55; }
-  #wantedBox .lit { color: #ffe14d; text-shadow: 0 0 12px #ffae00, 0 0 22px #ff5e00; }
-  #radioBox { position: absolute; top: 74px; right: 12px; font-size: 12px; text-align: right; line-height: 1.5; }
-  #radioBox .station { color: #ff5ec4; font-weight: 700; letter-spacing: 2px; }
-  #radioBox .song { color: #eaf6ff; }
-  #radioBox .clock { color: #ffd75e; font-weight: 700; letter-spacing: 2px; }
-  #speedBox { position: absolute; bottom: 12px; left: 12px; font-size: 15px; }
-  #speedBox b { font-size: 46px; line-height: 1; }
-  #speedBox .unit { font-size: 12px; color: #8fd8ff; letter-spacing: 2px; }
-  #speedBox .gear { font-size: 12px; color: #ffd75e; letter-spacing: 1px; }
-  #policeBox { position: absolute; left: 12px; top: 148px; font-size: 12px; line-height: 1.7; min-width: 168px; }
-  #policeBox .pTitle { color: #ff5e5e; font-weight: 700; letter-spacing: 2px; font-size: 11px; }
-  #policeBox .unit { color: #cfe8ff; }
-  #policeBox .unit b { color: #fff; }
-  #policeBox .unit .dist { color: #8fd8ff; }
-  #policeBox .role { display: inline-block; padding: 1px 6px; border-radius: 3px; font-weight: 700; font-size: 10px; letter-spacing: 1px; margin: 0 2px; }
-  #policeBox .role-ramming { background: #ff2244; color: #fff; }
-  #policeBox .role-pursuit { background: #2255ff; color: #fff; }
-  #policeBox .role-flanking { background: #ffae00; color: #111; }
-  #policeBox .role-spotlight { background: #00e5ff; color: #04222e; }
-  #policeBox .role-roadblock { background: #ffd75e; color: #111; }
-  #policeBox .role-closing-in { background: #b300ff; color: #fff; }
-  #policeBox .role-responding { background: #3a4568; color: #cfe8ff; }
-  /* v8: crew panel — three faces, three abilities, three cooldowns */
-  #crewBox { position: absolute; right: 12px; top: 218px; font-size: 12px; line-height: 1.5; min-width: 196px; }
-  #crewBox .cTitle { color: #39ff88; font-weight: 700; letter-spacing: 2px; font-size: 11px; margin-bottom: 4px; }
-  #crewBox .crewRow { display: flex; gap: 8px; align-items: center; margin: 5px 0; }
-  #crewBox .crewRow.cooling { opacity: 0.55; }
-  #crewBox canvas { width: 32px; height: 32px; flex: none; border-radius: 6px; border: 1px solid rgba(57, 255, 136, 0.5); }
-  #crewBox .cName { font-weight: 700; color: #fff; letter-spacing: 1px; }
-  #crewBox .cAbility { color: #9fc6e8; font-size: 11px; }
-  #crewBox .cKey { margin-left: auto; font-weight: 700; color: #ffd75e; border: 1px solid rgba(255, 215, 94, 0.6); border-radius: 4px; padding: 0 6px; font-size: 11px; white-space: nowrap; }
-  #crewBox .cKey.cooling { color: #8fa8c9; border-color: rgba(143, 168, 201, 0.5); }
-  /* v8: district label under the minimap — raised clear of the minimap's top edge (was 210px, the second line clipped behind the map) */
-  #districtLabel { position: absolute; right: 12px; bottom: 228px; text-align: right; font-size: 12px; line-height: 1.5; }
-  #districtLabel b { color: #ffd75e; letter-spacing: 2px; font-size: 13px; display: block; }
-  #districtLabel span { color: #8fd8ff; letter-spacing: 1px; }
-  #respectBox { margin-top: 6px; }
-  #respectBox .rLabel { font-size: 11px; color: #ffd75e; letter-spacing: 2px; }
-  #respectBarWrap { width: 180px; height: 8px; background: rgba(255,255,255,.15); border-radius: 4px; margin-top: 3px; overflow: hidden; }
-  #respectBar { height: 100%; width: 0%; background: linear-gradient(90deg, #00e5ff, #b300ff); }
-  #minimapWrap { position: absolute; right: 12px; bottom: 12px; border: 1px solid rgba(0,229,255,.5); border-radius: 8px; overflow: hidden; box-shadow: 0 0 18px rgba(0,229,255,.35); }
-  #minimap { display: block; background: #070b18; }
-  #missionBox { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); max-width: 46%; text-align: center; font-size: 15px; }
-  #missionBox b { color: #ffd75e; }
-  #missionStage { font-size: 11px; color: #8fd8ff; letter-spacing: 2px; margin-top: 2px; }
-  #missionNext { font-size: 12px; color: #b8ffce; margin-top: 2px; }
-  #feed { position: absolute; left: 12px; bottom: 86px; font-size: 13px; line-height: 1.5; }
-  #feed div { opacity: .95; }
-  #dialog { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); width: 560px; max-width: 86vw; display: none; }
-  #dialog .who { color: #ff5ec4; font-weight: 700; letter-spacing: 1px; }
-  #dialog .text { margin-top: 4px; font-size: 15px; line-height: 1.45; }
-  #dialog .hint { margin-top: 6px; font-size: 12px; color: #8fd8ff; }
-  #dialogBody { display: flex; gap: 12px; align-items: flex-start; text-align: left; }
-  #vexPortrait { width: 64px; height: 64px; flex: none; border-radius: 8px; border: 1px solid rgba(255, 94, 196, 0.6); box-shadow: 0 0 12px rgba(255, 45, 120, 0.45); }
-  #crosshair { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; display: none; }
-  #crosshair:before, #crosshair:after { content: ""; position: absolute; background: #fff; box-shadow: 0 0 6px #0ff; }
-  #crosshair:before { left: 8px; top: 0; width: 2px; height: 18px; }
-  #crosshair:after { left: 0; top: 8px; width: 18px; height: 2px; }
-  /* mission intro card: big center flash when a job starts or pays out */
-  #missionCard { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%); text-align: center; display: none; pointer-events: none; transition: opacity .45s ease; }
-  #missionCard.cardOut { opacity: 0; }
-  #missionCardInner { display: flex; gap: 12px; align-items: center; justify-content: center; }
-  #missionCardPortrait { width: 48px; height: 48px; flex: none; border-radius: 8px; border: 1px solid rgba(255, 94, 196, 0.6); box-shadow: 0 0 12px rgba(255, 45, 120, 0.45); }
-  #missionCardTitle { font-size: 44px; font-weight: 900; letter-spacing: 6px; color: #ffd75e; text-shadow: 0 0 12px #ffae00, 0 0 34px #ff5e00; }
-  #missionCardSub { margin-top: 4px; font-size: 16px; color: #eaf6ff; text-shadow: 0 0 8px rgba(0,229,255,.7); }
-  #missionCardFrom { margin-top: 2px; font-size: 11px; color: #ff5ec4; letter-spacing: 2px; }
-  #missionCardQuote { margin-top: 4px; font-size: 13px; font-style: italic; color: #eaf6ff; max-width: 430px; line-height: 1.35; }
-  /* red edge flash when the player is hurt */
-  #damageVignette { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0; transition: opacity .3s ease; background: radial-gradient(ellipse at center, transparent 52%, rgba(255, 20, 40, 0.55) 100%); }
-  /* v6: garage upgrades + AMMO-NATION shop panels, centered, clickable */
-  #garagePanel, #shopPanel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none; pointer-events: auto; min-width: 340px; text-align: center; }
-  #garagePanel h2, #shopPanel h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: 3px; color: #ffd75e; }
-  #garagePanel .sub, #shopPanel .sub { font-size: 12px; color: #8fd8ff; margin-bottom: 10px; }
-  #garagePanel button, #shopPanel button { display: block; width: 100%; margin: 6px 0; padding: 10px 14px; font-size: 14px; font-weight: 700; letter-spacing: 1px; color: #eaf6ff; background: rgba(0, 229, 255, .12); border: 1px solid rgba(0, 229, 255, .5); border-radius: 6px; cursor: pointer; }
-  #garagePanel button:hover, #shopPanel button:hover { background: rgba(0, 229, 255, .28); }
-  #garagePanel button.closeBtn, #shopPanel button.closeBtn { background: transparent; border-color: rgba(255, 255, 255, .3); color: #9fc6e8; }
-  /* ---------- Screens ---------- */
-  .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; z-index: 10; font-family: "Segoe UI", Arial, sans-serif; color: #eaf6ff; text-align: center; background: radial-gradient(ellipse at 50% 30%, rgba(64, 12, 92, .88), rgba(3, 4, 12, .96) 70%); }
-  .screen h1 { margin: 0; font-size: 74px; letter-spacing: 10px; font-weight: 900; color: #fff; text-shadow: 0 0 8px #ff2d78, 0 0 30px #ff2d78, 0 0 60px #b300ff; }
-  .screen h1 .bay { color: #7df9ff; text-shadow: 0 0 8px #00e5ff, 0 0 30px #00e5ff, 0 0 60px #0088ff; }
-  .screen .tag { margin-top: 6px; font-size: 15px; letter-spacing: 4px; color: #ffb3d1; }
-  .screen .story { max-width: 620px; margin: 22px 0 6px; font-size: 15px; line-height: 1.6; color: #cfe8ff; }
-  .screen .joblist { margin: 10px 0 2px; font-size: 13px; line-height: 1.8; color: #9fc6e8; }
-  .screen .joblist b { color: #ffd75e; }
-  .screen .controls { margin: 14px 0; font-size: 13px; line-height: 1.9; color: #9fc6e8; }
-  .screen .controls b { color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); border-radius: 4px; padding: 1px 7px; font-weight: 600; }
-  .btn { pointer-events: auto; cursor: pointer; margin: 6px; padding: 12px 34px; font-size: 17px; font-weight: 700; letter-spacing: 2px; color: #04121a; background: linear-gradient(90deg, #00e5ff, #ff2d78); border: none; border-radius: 8px; box-shadow: 0 0 22px rgba(0,229,255,.55); }
-  .btn.ghost { background: transparent; color: #8fd8ff; border: 1px solid rgba(0,229,255,.6); box-shadow: none; }
-  #pauseScreen, #endScreen { display: none; }
-  #pauseScreen h1, #endScreen h1 { font-size: 44px; }
-  #endTitle { font-size: 44px; }
-  #saveNote { margin-top: 10px; font-size: 12px; color: #7fa8c9; }
-  #jobProgress { margin-top: 8px; font-size: 14px; color: #ffd75e; letter-spacing: 1px; }
 </style>
 </head>
 <body>
-<canvas id="game" aria-label="Neon Bay: a sun-soaked coastal open-world crime game you explore on foot, by car and by helicopter"></canvas>
+<canvas id="game" aria-label="Solmara Bay: an open-world crime game on a sunny island city" oncontextmenu="return false"></canvas>
 <p id="status" role="status" aria-live="polite"></p>
 
-<div id="hud">
-  <div id="cashBox" class="panel">$<span id="cash">0</span><small>NEON BAY &middot; <span id="jobLabel">FREE ROAM</span></small><div id="orbBox">NEON ORBS <span id="orbCount">0/12</span></div><div id="weaponBox">WEAPON <span id="weaponName">PISTOL</span> &middot; <span id="weaponAmmo">&infin;</span></div><div id="healthBarWrap"><div id="healthBar"></div></div><div id="respectBox"><div class="rLabel">RESPECT <span id="respectRank">ROOKIE</span> &middot; <span id="respectPct">0%</span></div><div id="respectBarWrap"><div id="respectBar"></div></div></div></div>
-  <div id="wantedBox" class="panel"><span data-star="1">&#9733;</span><span data-star="2">&#9733;</span><span data-star="3">&#9733;</span><span data-star="4">&#9733;</span><span data-star="5">&#9733;</span></div>
-  <div id="radioBox" class="panel"><div class="station">BAY FM 88.1</div><div class="song" id="radioSong">Neon Drive — Midnight Mirage</div><div class="clock" id="clockLine">12:00 · DAY</div></div>
-  <div id="policeBox" class="panel"><div class="pTitle" id="policeTitle">BAY PD RESPONSE</div><div id="policeList"><div class="unit">No units responding</div></div></div>
-  <div id="crewBox" class="panel"><div class="cTitle">CREW</div><div class="crewRow" id="crewRow0"><canvas id="crewPortrait0" width="64" height="64"></canvas><div><div class="cName">MIRA · DRIVER</div><div class="cAbility">SWAP PLATES — lose a star</div></div><span class="cKey" id="crewCd0">Z · READY</span></div><div class="crewRow" id="crewRow1"><canvas id="crewPortrait1" width="64" height="64"></canvas><div><div class="cName">ZIO · MECHANIC</div><div class="cAbility">QUICK FIX — patch up +50</div></div><span class="cKey" id="crewCd1">X · READY</span></div><div class="crewRow" id="crewRow2"><canvas id="crewPortrait2" width="64" height="64"></canvas><div><div class="cName">KIKI · LOOKOUT</div><div class="cAbility">EYES OUT — spot all units</div></div><span class="cKey" id="crewCd2">C · READY</span></div></div>
-  <div id="districtLabel"><b id="districtName">MERIDIAN CROSSING</b><span id="districtStanding">NEUTRAL · 0%</span></div>
-  <div id="missionBox" class="panel"><b id="missionTitle">FREE ROAM</b><div id="missionText">Explore Neon Bay. Steal a car with E. Missions come from Vex.</div><div id="missionStage"></div><div id="missionNext"></div></div>
-  <div id="speedBox" class="panel"><b id="speed">0</b> <span class="unit">KM/H</span> &middot; <span id="modeLabel">ON FOOT</span> <span class="gear" id="gearLabel"></span></div>
-  <div id="minimapWrap"><canvas id="minimap" width="190" height="190"></canvas></div>
-  <div id="feed"></div>
-  <div id="dialog" class="panel"><div id="dialogBody"><canvas id="vexPortrait" width="64" height="64"></canvas><div><div class="who" id="dialogWho">VEX</div><div class="text" id="dialogText"></div><div class="hint">ENTER to continue</div></div></div></div>
-  <div id="crosshair"></div>
-  <div id="garagePanel" class="panel"><h2>GARAGE 9</h2><div class="sub">UPGRADES — 3 LEVELS EACH · TOP SPEED · ARMOR · STEERING</div><button id="garageEngine">ENGINE — LV 0 · NEXT $400</button><button id="garageArmor">ARMOR — LV 0 · NEXT $400</button><button id="garageHandling">HANDLING — LV 0 · NEXT $400</button><button class="closeBtn" id="garageClose">CLOSE (G)</button></div>
-  <div id="shopPanel" class="panel"><h2>AMMO-NATION</h2><div class="sub">VOLT ROW — HEALTH &amp; AMMO</div><button id="shopHealth">MEDKIT — FULL HEALTH · $100</button><button id="shopSmg">SMG AMMO ×120 · $150</button><button id="shopShells">SHOTGUN SHELLS ×24 · $150</button><button class="closeBtn" id="shopClose">CLOSE</button></div>
-  <div id="missionCard"><div id="missionCardInner"><canvas id="missionCardPortrait" width="48" height="48"></canvas><div><div id="missionCardTitle">JOB 1</div><div id="missionCardSub">NEON RUN</div><div id="missionCardFrom">VEX MARLOWE</div><div id="missionCardQuote"></div></div></div></div>
+<!-- Mission panel -->
+<div id="mission-panel" class="panel">
+  <div id="mission-title">SOLMARA BAY</div>
+  <div id="mission-stage">PRESS J FOR WORK</div>
+  <div id="mission-bar-wrap"><div id="mission-bar"></div></div>
+  <div id="mission-next">VEX HAS WORK ON THE BAY</div>
 </div>
-<div id="damageVignette"></div>
-
-<div id="startScreen" class="screen">
-  <h1>NEON <span class="bay">BAY</span></h1>
-  <div class="tag">A SUN-SOAKED COASTAL OPEN-WORLD CRIME GAME &middot; 11 JOBS &middot; 3 STREET RACES &middot; FLYABLE HELICOPTER &middot; 12 NEON ORBS &middot; A FULL DAY-NIGHT CYCLE &middot; BRIGHT-NOON OPENING</div>
-  <div class="story">Sun on the water. You are <b>Rook</b>, a driver with no past and one fast car-shaped future.
-  Fixer <b>Vex Marlowe</b> has eleven jobs for you across the bright streets of Neon Bay — steal, deliver,
-  fight, outrun the Bay PD and its helicopter. Earn the cash. Don't get caught. The city runs on a
-  real clock now: night, dawn, day, golden hour, dusk — and it opens at bright noon, 12:00, the
-  whole bay glittering. Tune your ride at Garage 9, stock up at AMMO-NATION, and mind the
-  roadblocks at four stars and up. The gold <b>SKYHAWK</b> helicopter waits on its helipad by the
-  marina, the pier crowd runs three street races at the checkered flag — beat the par and the
-  crowd pays — and your crew has your back: <b>Mira</b> swaps the plates, <b>Zio</b> patches you up,
-  <b>Kiki</b> spots the law before it spots you.</div>
-  <div class="joblist">
-    <b>1</b> NEON RUN &middot; <b>2</b> HOT WHEELS &middot; <b>3</b> RAIN CHECK &middot; <b>4</b> BLACKOUT &middot; <b>5</b> THE LAST LIGHT<br>
-    <b>6</b> CAB CALL &middot; <b>7</b> KING OF THE BAY &middot; <b>8</b> GOLDEN HOUR &middot; <b>9</b> HIGH TIDE &middot; <b>10</b> GOLDEN HOUR KINGS &middot; <b>11</b> TIDE RUNNER
-  </div>
-  <div class="controls">
-    <b>W A S D</b> move / drive &nbsp; <b>Mouse</b> look &nbsp; <b>Shift</b> sprint / heli descend &nbsp; <b>E</b> enter / steal car / heli / shop / safehouse / race &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot<br>
-    <b>Space</b> handbrake / heli climb &nbsp; <b>1 2 3</b> pistol / SMG / shotgun &nbsp; <b>Q</b> cycle weapon &nbsp; <b>G</b> garage upgrades &nbsp; <b>Z X C</b> crew: swap plates / quick fix / eyes out &nbsp; <b>H</b> horn &nbsp; <b>R</b> reset car &nbsp; <b>Enter</b> accept job &nbsp; <b>M</b> mute &nbsp; <b>Esc</b> pause
-  </div>
-  <div><button class="btn" id="startBtn">START ENGINE</button><button class="btn ghost" id="continueBtn">CONTINUE</button></div>
-  <div id="saveNote">Progress saves automatically after every job. Sound starts when you press START.</div>
+<!-- Status: money, wanted, clock -->
+<div id="status-panel" class="panel">
+  <div id="money">$500</div>
+  <div id="stars"></div>
+  <div id="clock">12:00</div>
+  <div id="day">DAY 1</div>
 </div>
-
-<div id="pauseScreen" class="screen">
-  <h1>PAUSED</h1>
-  <div class="story">The rain keeps falling. The city waits.</div>
-  <div id="jobProgress">Jobs done: 0 / 11</div>
-  <div><button class="btn" id="resumeBtn">RESUME</button><button class="btn ghost" id="saveBtn">SAVE GAME</button><button class="btn ghost" id="restartBtn">RESTART NIGHT</button></div>
-  <div class="controls"><b>W A S D</b> move / drive &nbsp; <b>E</b> enter car / heli / shop / safehouse / race &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot &nbsp; <b>1 2 3</b> weapons &nbsp; <b>G</b> garage &nbsp; <b>Space</b> handbrake / heli climb &nbsp; <b>H</b> horn &nbsp; <b>M</b> mute</div>
+<!-- Police response -->
+<div id="police-panel" class="panel">
+  <h3>BAY PD RESPONSE</h3>
+  <div><span id="police-count">0 UNITS</span> · <span id="police-state">CLEAR</span></div>
+  <div id="police-list"><div class="pd-none">No units on you.</div></div>
 </div>
-
-<div id="endScreen" class="screen">
-  <h1 id="endTitle">BUSTED</h1>
-  <div class="story" id="endText">The Bay PD caught up with you.</div>
-  <div><button class="btn" id="endBtn">BACK TO THE STREETS</button></div>
+<!-- Crew -->
+<div id="crew-panel" class="panel"></div>
+<!-- District, minimap, vitals -->
+<div id="district-panel" class="panel">
+  <div id="district-name">CORAL STRAND</div>
+  <div id="district-street">Strand Boulevard</div>
+  <div id="district-stand">0 / 150 RESPECT</div>
+  <div id="rank-name">ROOKIE</div>
+  <div id="rank-bar-wrap"><div id="rank-bar"></div></div>
+  <canvas id="minimap" width="190" height="190"></canvas>
+  <div class="vital">HEALTH <div class="bar-wrap"><div id="health-bar"></div></div><span class="num" id="health-num">100</span></div>
+  <div class="vital">ARMOUR <div class="bar-wrap"><div id="armor-bar"></div></div><span class="num" id="armor-num">0</span></div>
 </div>
+<!-- Dialogue -->
+<div id="dialogue" class="panel">
+  <img id="dialogue-face" alt="">
+  <div><div id="dialogue-name">VEX · Fixer</div><div id="dialogue-text"></div></div>
+</div>
+<!-- Drive: speed, car, weapons, radio -->
+<div id="drive-panel" class="panel">
+  <div><span id="speed-num">0</span> <span id="speed-unit">KM/H</span></div>
+  <div id="car-name">ON FOOT</div>
+  <div id="car-cond">—</div>
+  <div id="car-cond-wrap"><div id="car-cond-bar"></div></div>
+  <div id="weapons"></div>
+  <div id="radio-line">♪ BAY FM 88.1</div>
+</div>
+<!-- Centre announcement -->
+<div id="center-card" class="panel">
+  <div id="center-title"></div>
+  <div id="center-sub"></div>
+</div>
+<div id="toast" class="panel"></div>
 
+<!-- Start screen -->
+<div id="start-screen" class="overlay">
+  <h1>SOLMARA BAY</h1>
+  <h2>AN OPEN-WORLD CRIME GAME · BRIGHT NOON ON THE BAY</h2>
+  <p>Eleven jobs. One fixer named Vex. A crew that has your back, a police
+  force that does not, and a whole island city to take.</p>
+  <p class="keys">
+    <b>WASD</b> move / drive &nbsp;·&nbsp; <b>Shift</b> run &nbsp;·&nbsp; <b>Space</b> jump<br>
+    <b>E</b> enter / exit car &amp; helicopter &nbsp;·&nbsp; <b>Mouse</b> shoot &nbsp;·&nbsp; <b>1–4</b> weapons<br>
+    <b>J</b> start next job &nbsp;·&nbsp; <b>Z / X / C</b> crew abilities<br>
+    <b>G</b> garage &nbsp;·&nbsp; <b>B</b> shop &nbsp;·&nbsp; <b>F</b> save &nbsp;·&nbsp; <b>H</b> help &nbsp;·&nbsp; <b>M</b> mute
+  </p>
+  <p><b>ENTER</b> to start &nbsp;·&nbsp; <b>N</b> for a new game</p>
+  <div id="start-save"></div>
+</div>
+<!-- Help -->
+<div id="help-screen" class="overlay hidden">
+  <h1>CONTROLS</h1>
+  <p class="keys">
+    <b>WASD / Arrows</b> move on foot, drive in a car<br>
+    <b>Shift</b> sprint · <b>Space</b> jump · <b>E</b> enter / exit a car or the SKYHAWK<br>
+    <b>Mouse click</b> shoot · <b>1–4</b> switch weapon<br>
+    <b>J</b> start the next job · <b>Z</b> swap plates · <b>X</b> quick fix · <b>C</b> eyes out<br>
+    <b>G</b> garage upgrades · <b>B</b> shop · <b>F</b> save · <b>M</b> mute · <b>H</b> close this help
+  </p>
+  <p>Helicopter: <b>W/S</b> pitch, <b>A/D</b> turn, <b>Shift</b> climb, <b>Ctrl</b> descend.<br>
+  You cannot step out of the helicopter over deep water.</p>
+  <p>Press <b>H</b> to close.</p>
+</div>
+<!-- Garage -->
+<div id="garage-panel" class="modal hidden">
+  <h2>GARAGE — UPGRADES</h2>
+  <div id="garage-rows"></div>
+  <div class="hint">Engine adds top speed, Armor adds HP, Handling adds grip. Press G to close.</div>
+</div>
+<!-- Shop -->
+<div id="shop-panel" class="modal hidden">
+  <h2>SHOP — AMMO &amp; GEAR</h2>
+  <div id="shop-rows"></div>
+  <div class="hint">Press B to close.</div>
+</div>
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.min.js" } }
 </script>
-<script type="module" src="./src/main.js"></script>
+<script type="module" src="./src/boot.js"></script>
 </body>
 </html>
