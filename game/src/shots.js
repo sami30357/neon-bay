@@ -24,13 +24,16 @@ export function stageShot(game, name) {
   const setWanted = (n) => g.police.setWanted(n);
   if (name === 'cover') {
     // On the coast road at noon: the bay and Pier 7 ahead, the heli overhead,
-    // a roadblock across the road, the crew on the HUD.
+    // a roadblock across the road, the crew on the HUD. Yaw 0 faces south
+    // (+Z, out over the water), so the car and driver look out at the bay
+    // with the camera behind them — the earlier yaw of PI faced them back
+    // toward the camera and the city.
     g.player.spawn(24, 192);
-    g.player.yaw = Math.PI;
+    g.player.yaw = 0;
     const car = g.vehicles.all.find((c) => c.def.id === 'solano' && !c.wrecked);
     if (car) {
       car.pos.set(24, 0, 196);
-      car.yaw = Math.PI;
+      car.yaw = 0;
       car.group.position.copy(car.pos);
       car.group.rotation.y = car.yaw;
       g.vehicles.playerCar = car;
