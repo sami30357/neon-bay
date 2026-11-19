@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- v5: Golden Hour — game clock in the radio panel, 8 jobs on the start screen, under recording 01a1f255. -->
+<!-- v6: Golden Hour Kings — weapon readout, garage + shop panels, 10 jobs on the start screen, under recording 01a1f269. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -16,6 +16,7 @@
   #cashBox { position: absolute; top: 12px; left: 12px; font-size: 20px; font-weight: 700; }
   #cashBox small { display: block; font-size: 11px; color: #8fd8ff; font-weight: 400; letter-spacing: 1px; }
   #orbBox { margin-top: 4px; font-size: 12px; color: #7df9ff; letter-spacing: 1px; }
+  #weaponBox { margin-top: 4px; font-size: 12px; color: #ffd75e; letter-spacing: 1px; }
   #healthBarWrap { width: 180px; height: 10px; background: rgba(255,255,255,.15); border-radius: 5px; margin-top: 6px; overflow: hidden; }
   #healthBar { height: 100%; width: 100%; background: linear-gradient(90deg, #ff2d78, #ff7a3d); }
   #wantedBox { position: absolute; top: 12px; right: 12px; font-size: 26px; letter-spacing: 4px; color: #2b3a55; }
@@ -65,6 +66,13 @@
   #missionCardQuote { margin-top: 4px; font-size: 13px; font-style: italic; color: #eaf6ff; max-width: 430px; line-height: 1.35; }
   /* red edge flash when the player is hurt */
   #damageVignette { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0; transition: opacity .3s ease; background: radial-gradient(ellipse at center, transparent 52%, rgba(255, 20, 40, 0.55) 100%); }
+  /* v6: garage upgrades + AMMO-NATION shop panels, centered, clickable */
+  #garagePanel, #shopPanel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none; pointer-events: auto; min-width: 340px; text-align: center; }
+  #garagePanel h2, #shopPanel h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: 3px; color: #ffd75e; }
+  #garagePanel .sub, #shopPanel .sub { font-size: 12px; color: #8fd8ff; margin-bottom: 10px; }
+  #garagePanel button, #shopPanel button { display: block; width: 100%; margin: 6px 0; padding: 10px 14px; font-size: 14px; font-weight: 700; letter-spacing: 1px; color: #eaf6ff; background: rgba(0, 229, 255, .12); border: 1px solid rgba(0, 229, 255, .5); border-radius: 6px; cursor: pointer; }
+  #garagePanel button:hover, #shopPanel button:hover { background: rgba(0, 229, 255, .28); }
+  #garagePanel button.closeBtn, #shopPanel button.closeBtn { background: transparent; border-color: rgba(255, 255, 255, .3); color: #9fc6e8; }
   /* ---------- Screens ---------- */
   .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; z-index: 10; font-family: "Segoe UI", Arial, sans-serif; color: #eaf6ff; text-align: center; background: radial-gradient(ellipse at 50% 30%, rgba(64, 12, 92, .88), rgba(3, 4, 12, .96) 70%); }
   .screen h1 { margin: 0; font-size: 74px; letter-spacing: 10px; font-weight: 900; color: #fff; text-shadow: 0 0 8px #ff2d78, 0 0 30px #ff2d78, 0 0 60px #b300ff; }
@@ -89,9 +97,9 @@
 <p id="status" role="status" aria-live="polite"></p>
 
 <div id="hud">
-  <div id="cashBox" class="panel">$<span id="cash">0</span><small>NEON BAY &middot; <span id="jobLabel">FREE ROAM</span></small><div id="orbBox">NEON ORBS <span id="orbCount">0/12</span></div><div id="healthBarWrap"><div id="healthBar"></div></div><div id="respectBox"><div class="rLabel">RESPECT <span id="respectPct">0%</span></div><div id="respectBarWrap"><div id="respectBar"></div></div></div></div>
+  <div id="cashBox" class="panel">$<span id="cash">0</span><small>NEON BAY &middot; <span id="jobLabel">FREE ROAM</span></small><div id="orbBox">NEON ORBS <span id="orbCount">0/12</span></div><div id="weaponBox">WEAPON <span id="weaponName">PISTOL</span> &middot; <span id="weaponAmmo">&infin;</span></div><div id="healthBarWrap"><div id="healthBar"></div></div><div id="respectBox"><div class="rLabel">RESPECT <span id="respectPct">0%</span></div><div id="respectBarWrap"><div id="respectBar"></div></div></div></div>
   <div id="wantedBox" class="panel"><span data-star="1">&#9733;</span><span data-star="2">&#9733;</span><span data-star="3">&#9733;</span><span data-star="4">&#9733;</span><span data-star="5">&#9733;</span></div>
-  <div id="radioBox" class="panel"><div class="station">WAVE 88.1</div><div class="song" id="radioSong">Neon Drive — Midnight Mirage</div><div class="clock" id="clockLine">21:00 · NIGHT</div></div>
+  <div id="radioBox" class="panel"><div class="station">WAVE 88.1</div><div class="song" id="radioSong">Neon Drive — Midnight Mirage</div><div class="clock" id="clockLine">17:30 · GOLDEN HOUR</div></div>
   <div id="policeBox" class="panel"><div class="pTitle">BAY PD RESPONSE</div><div id="policeList"><div class="unit">No units responding</div></div></div>
   <div id="missionBox" class="panel"><b id="missionTitle">FREE ROAM</b><div id="missionText">Explore Neon Bay. Steal a car with E. Missions come from Vex.</div><div id="missionStage"></div><div id="missionNext"></div></div>
   <div id="speedBox" class="panel"><b id="speed">0</b> <span class="unit">KM/H</span> &middot; <span id="modeLabel">ON FOOT</span> <span class="gear" id="gearLabel"></span></div>
@@ -99,24 +107,28 @@
   <div id="feed"></div>
   <div id="dialog" class="panel"><div id="dialogBody"><canvas id="vexPortrait" width="64" height="64"></canvas><div><div class="who" id="dialogWho">VEX</div><div class="text" id="dialogText"></div><div class="hint">ENTER to continue</div></div></div></div>
   <div id="crosshair"></div>
+  <div id="garagePanel" class="panel"><h2>GARAGE 9</h2><div class="sub">UPGRADES — 3 LEVELS EACH · TOP SPEED · ARMOR · STEERING</div><button id="garageEngine">ENGINE — LV 0 · NEXT $400</button><button id="garageArmor">ARMOR — LV 0 · NEXT $400</button><button id="garageHandling">HANDLING — LV 0 · NEXT $400</button><button class="closeBtn" id="garageClose">CLOSE (G)</button></div>
+  <div id="shopPanel" class="panel"><h2>AMMO-NATION</h2><div class="sub">VOLT ROW — HEALTH &amp; AMMO</div><button id="shopHealth">MEDKIT — FULL HEALTH · $100</button><button id="shopSmg">SMG AMMO ×120 · $150</button><button id="shopShells">SHOTGUN SHELLS ×24 · $150</button><button class="closeBtn" id="shopClose">CLOSE</button></div>
   <div id="missionCard"><div id="missionCardInner"><canvas id="missionCardPortrait" width="48" height="48"></canvas><div><div id="missionCardTitle">JOB 1</div><div id="missionCardSub">NEON RUN</div><div id="missionCardFrom">VEX MARLOWE</div><div id="missionCardQuote"></div></div></div></div>
 </div>
 <div id="damageVignette"></div>
 
 <div id="startScreen" class="screen">
   <h1>NEON <span class="bay">BAY</span></h1>
-  <div class="tag">A RAIN-SLICK OPEN-WORLD CRIME GAME &middot; 8 JOBS &middot; 12 NEON ORBS &middot; A FULL DAY-NIGHT CYCLE</div>
+  <div class="tag">A RAIN-SLICK OPEN-WORLD CRIME GAME &middot; 10 JOBS &middot; 12 NEON ORBS &middot; A FULL DAY-NIGHT CYCLE &middot; GOLDEN-HOUR OPENING</div>
   <div class="story">Rain on neon. You are <b>Rook</b>, a driver with no past and one fast car-shaped future.
-  Fixer <b>Vex Marlowe</b> has eight jobs for you across the wet streets of Neon Bay — steal, deliver,
+  Fixer <b>Vex Marlowe</b> has ten jobs for you across the wet streets of Neon Bay — steal, deliver,
   fight, outrun the Bay PD and its helicopter. Earn the cash. Don't get caught. The city runs on a
-  real clock now: night, dawn, day, golden hour, dusk — and a dawn getaway in the Sunrise GT.</div>
+  real clock now: night, dawn, day, golden hour, dusk — and it opens at golden hour, 17:30, the
+  whole skyline on fire. Tune your ride at Garage 9, stock up at AMMO-NATION, and mind the
+  roadblocks at four stars and up.</div>
   <div class="joblist">
-    <b>1</b> NEON RUN &middot; <b>2</b> HOT WHEELS &middot; <b>3</b> RAIN CHECK &middot; <b>4</b> BLACKOUT<br>
-    <b>5</b> THE LAST LIGHT &middot; <b>6</b> CAB CALL &middot; <b>7</b> KING OF THE BAY &middot; <b>8</b> GOLDEN HOUR
+    <b>1</b> NEON RUN &middot; <b>2</b> HOT WHEELS &middot; <b>3</b> RAIN CHECK &middot; <b>4</b> BLACKOUT &middot; <b>5</b> THE LAST LIGHT<br>
+    <b>6</b> CAB CALL &middot; <b>7</b> KING OF THE BAY &middot; <b>8</b> GOLDEN HOUR &middot; <b>9</b> HIGH TIDE &middot; <b>10</b> GOLDEN HOUR KINGS
   </div>
   <div class="controls">
-    <b>W A S D</b> move / drive &nbsp; <b>Mouse</b> look &nbsp; <b>Shift</b> sprint &nbsp; <b>E</b> enter / steal car &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot<br>
-    <b>Space</b> handbrake &nbsp; <b>H</b> horn &nbsp; <b>R</b> reset car &nbsp; <b>Enter</b> accept job &nbsp; <b>M</b> mute &nbsp; <b>Esc</b> pause
+    <b>W A S D</b> move / drive &nbsp; <b>Mouse</b> look &nbsp; <b>Shift</b> sprint &nbsp; <b>E</b> enter / steal car / shop / safehouse &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot<br>
+    <b>1 2 3</b> pistol / SMG / shotgun &nbsp; <b>Q</b> cycle weapon &nbsp; <b>G</b> garage upgrades &nbsp; <b>Space</b> handbrake &nbsp; <b>H</b> horn &nbsp; <b>R</b> reset car &nbsp; <b>Enter</b> accept job &nbsp; <b>M</b> mute &nbsp; <b>Esc</b> pause
   </div>
   <div><button class="btn" id="startBtn">START ENGINE</button><button class="btn ghost" id="continueBtn">CONTINUE</button></div>
   <div id="saveNote">Progress saves automatically after every job. Sound starts when you press START.</div>
@@ -125,9 +137,9 @@
 <div id="pauseScreen" class="screen">
   <h1>PAUSED</h1>
   <div class="story">The rain keeps falling. The city waits.</div>
-  <div id="jobProgress">Jobs done: 0 / 7</div>
+  <div id="jobProgress">Jobs done: 0 / 10</div>
   <div><button class="btn" id="resumeBtn">RESUME</button><button class="btn ghost" id="saveBtn">SAVE GAME</button><button class="btn ghost" id="restartBtn">RESTART NIGHT</button></div>
-  <div class="controls"><b>W A S D</b> move / drive &nbsp; <b>E</b> enter car &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot &nbsp; <b>Space</b> handbrake &nbsp; <b>H</b> horn &nbsp; <b>M</b> mute</div>
+  <div class="controls"><b>W A S D</b> move / drive &nbsp; <b>E</b> enter car / shop / safehouse &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot &nbsp; <b>1 2 3</b> weapons &nbsp; <b>G</b> garage &nbsp; <b>Space</b> handbrake &nbsp; <b>H</b> horn &nbsp; <b>M</b> mute</div>
 </div>
 
 <div id="endScreen" class="screen">

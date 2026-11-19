@@ -1,3 +1,5 @@
+// v6: Golden Hour Kings — shoot() takes a per-weapon cooldown (SMG fires
+// fast, shotgun slow), under recording 01a1f269.
 // v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // The player on foot in Neon Bay: a third-person walker with sprint, punch and
@@ -132,9 +134,10 @@ export class Player {
     return true;
   }
 
-  shoot() {
+  // v6: cooldown is per-weapon — the caller passes the current weapon's rate
+  shoot(cooldown = 0.32) {
     if (this.shootCooldown > 0) return null;
-    this.shootCooldown = 0.32;
+    this.shootCooldown = cooldown;
     this.aimTimer = 0.35;
     // ray from the camera through the crosshair
     return { origin: this.group.position.clone().add(new THREE.Vector3(0, 1.6, 0)), dir: new THREE.Vector3(Math.sin(this.yaw), -0.02, Math.cos(this.yaw)) };

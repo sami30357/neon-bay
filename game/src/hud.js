@@ -1,3 +1,4 @@
+// v6: Golden Hour Kings — weapon readout + garage/shop panels, under recording 01a1f269.
 // v5: Golden Hour — game clock (time + phase) in the radio panel, under recording 01a1f255.
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // HUD for Neon Bay: cash, health, wanted stars, mission banner, message feed,
@@ -42,6 +43,14 @@ export class HUD {
     this.policeListEl = document.getElementById('policeList');
     this.respectBarEl = document.getElementById('respectBar');
     this.respectPctEl = document.getElementById('respectPct');
+    // v6: weapon readout + garage/shop panels
+    this.weaponNameEl = document.getElementById('weaponName');
+    this.weaponAmmoEl = document.getElementById('weaponAmmo');
+    this.garageEl = document.getElementById('garagePanel');
+    this.shopEl = document.getElementById('shopPanel');
+    this.garageEngineEl = document.getElementById('garageEngine');
+    this.garageArmorEl = document.getElementById('garageArmor');
+    this.garageHandlingEl = document.getElementById('garageHandling');
     this.mapCanvas = document.getElementById('minimap');
     this.mapCtx = this.mapCanvas.getContext('2d');
     this.feedLines = [];
@@ -95,6 +104,33 @@ export class HUD {
     if (this.respectBarEl) this.respectBarEl.style.width = `${p}%`;
     if (this.respectPctEl) this.respectPctEl.textContent = `${p}%`;
   }
+  // v6: weapon wheel readout — name + ammo (∞ for the pistol)
+  setWeapon(name, ammoLabel) {
+    if (this.weaponNameEl) this.weaponNameEl.textContent = name;
+    if (this.weaponAmmoEl) this.weaponAmmoEl.textContent = ammoLabel;
+  }
+  // v6: garage upgrades panel — each button shows its level and next price
+  showGarage(upgrades) {
+    if (!this.garageEl) return;
+    this.setGarage(upgrades);
+    this.garageEl.style.display = 'block';
+  }
+  hideGarage() { if (this.garageEl) this.garageEl.style.display = 'none'; }
+  setGarage(upgrades) {
+    if (!upgrades) return;
+    const label = (el, name, level, costs) => {
+      if (!el) return;
+      el.textContent = level >= 3
+        ? `${name} — LV 3 MAX`
+        : `${name} — LV ${level} · NEXT $${costs[level]}`;
+    };
+    label(this.garageEngineEl, 'ENGINE', upgrades.engine, [400, 800, 1400]);
+    label(this.garageArmorEl, 'ARMOR', upgrades.armor, [400, 800, 1400]);
+    label(this.garageHandlingEl, 'HANDLING', upgrades.handling, [400, 800, 1400]);
+  }
+  // v6: AMMO-NATION shop panel
+  showShop() { if (this.shopEl) this.shopEl.style.display = 'block'; }
+  hideShop() { if (this.shopEl) this.shopEl.style.display = 'none'; }
   // Bay PD response list: [{name, dist}] — named units with distances in metres
   setPoliceList(units) {
     if (!this.policeListEl) return;
@@ -102,7 +138,8 @@ export class HUD {
       this.policeListEl.innerHTML = '<div class="unit">No units responding</div>';
       return;
     }
-    this.policeListEl.innerHTML = units.slice(0, 4).map((u) =>
+    // v6: five rows so the helicopter + roadblock both fit above the nearest units
+    this.policeListEl.innerHTML = units.slice(0, 5).map((u) =>
       `<div class="unit"><b>${u.name}</b> — ${u.dist}</div>`).join('');
   }
 

@@ -1,3 +1,4 @@
+// v6: Golden Hour Kings — header touch under recording 01a1f269 (file content unchanged).
 // v5: Golden Hour — header touch under recording 01a1f255 (server unchanged).
 // A tiny static server for game/ (Node 22, standard library only), so an entry can be played
 // locally without a build step: `node serve.ts` serves game/ on http://localhost:8080.

@@ -1,3 +1,5 @@
+// v6: Golden Hour Kings — garage upgrades hook into CarDriver (top speed,
+// acceleration, steering), under recording 01a1f269.
 // v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Cars for Neon Bay: a stylized box-built car factory (body, cabin, wheels, neon
@@ -178,6 +180,16 @@ export class CarDriver {
     this.steer = 0;
     this.maxSpeed = 42;
     this.maxReverse = 12;
+    // v6: garage upgrades — engine raises top speed + accel, handling sharpens
+    // steering. applyUpgrades(engineLevel, handlingLevel) sets them.
+    this.accelMul = 1;
+    this.steerMul = 1;
+  }
+
+  applyUpgrades(engineLevel, handlingLevel) {
+    this.maxSpeed = 42 + engineLevel * 5; // +5 u/s (~18 km/h) per engine level
+    this.accelMul = 1 + 0.12 * engineLevel;
+    this.steerMul = 1 + 0.12 * handlingLevel;
   }
 
   get position() { return this.mesh.position; }
@@ -186,7 +198,7 @@ export class CarDriver {
     const throttle = input.axis('KeyS', 'KeyW');
     const steerInput = input.axis('KeyA', 'KeyD');
     const handbrake = input.down('Space');
-    const accel = 26;
+    const accel = 26 * this.accelMul; // v6: engine upgrades raise acceleration
     if (throttle > 0) this.speed += accel * dt;
     else if (throttle < 0) {
       if (this.speed > 0.5) this.speed -= 34 * dt; // brake
@@ -196,7 +208,7 @@ export class CarDriver {
     }
     if (handbrake) this.speed -= Math.sign(this.speed) * Math.min(Math.abs(this.speed), 26 * dt);
     this.speed = Math.max(-this.maxReverse, Math.min(this.maxSpeed, this.speed));
-    const steerTarget = steerInput * (handbrake ? 0.85 : 0.6);
+    const steerTarget = steerInput * (handbrake ? 0.85 : 0.6) * this.steerMul; // v6: handling upgrades sharpen steering
     this.steer += (steerTarget - this.steer) * Math.min(1, dt * 8);
     const speedFactor = Math.min(1, Math.abs(this.speed) / 14);
     this.heading -= this.steer * speedFactor * (this.speed >= 0 ? 1 : -1) * dt * 1.9;

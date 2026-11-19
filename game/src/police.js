@@ -1,3 +1,4 @@
+// v6: Golden Hour Kings — roadblocks at 4-5 stars + header, under recording 01a1f269.
 // v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Wanted level and the Bay PD for Neon Bay: crimes raise stars, police cars and
@@ -6,6 +7,9 @@
 // v2: a police HELICOPTER with a searchlight joins the chase at 4+ stars, light
 // bars are brighter, and every police car throws a red/blue pool of light on the
 // wet road.
+// v6: at 4-5 stars the PD also throws a ROADBLOCK — two stationary police cars
+// parked across the road ahead of the player, lights flashing. It clears when
+// the heat drops below 4 stars. Ramming one at speed hurts.
 import * as THREE from 'three';
 import { makeRng } from './random.js';
 import { createCarMesh } from './cars.js';
@@ -32,6 +36,7 @@ export class PoliceSystem {
     this.heatTimer = 0; // time since last crime
     this.cars = [];
     this.cops = [];
+    this.roadblock = []; // v6: two stationary police cars across the road at 4-5 stars
     this.heli = null; // {group, rotor, tailRotor, light, cone, beacon, hover}
     this.bustedTimer = 0;
     this.flashTimer = 0;
@@ -53,6 +58,7 @@ export class PoliceSystem {
 
   clearWanted() {
     this.wanted = 0;
+    this.clearRoadblock(); // v6: heat gone, roadblock gone
     this._syncUnits();
   }
 
@@ -80,6 +86,61 @@ export class PoliceSystem {
     }
     if (this._desiredHeli() === 1 && !this.heli) this._spawnHeli();
     if (this._desiredHeli() === 0 && this.heli) this._removeHeli();
+  }
+
+  // v6: roadblock — two stationary police cars parked across the road ahead
+  // of the player, facing them, lights flashing. Called with an explicit
+  // heading for screenshot staging, or from update() with the player's
+  // heading while the chase runs. Repositioned (not duplicated) if already up.
+  spawnRoadblock(px, pz, heading, ahead = 30) {
+    const fx = Math.sin(heading), fz = Math.cos(heading);
+    // perpendicular to the road, so the pair spans both lanes
+    const sx = fz, sz = -fx;
+    const spots = [
+      { x: px + fx * ahead + sx * 2.2, z: pz + fz * ahead + sz * 2.2 },
+      { x: px + fx * ahead - sx * 2.2, z: pz + fz * ahead - sz * 2.2 },
+    ];
+    for (let i = 0; i < 2; i++) {
+      let car = this.roadblock[i];
+      if (!car) {
+        const mesh = createCarMesh({ police: true });
+        this.scene.add(mesh);
+        const light = new THREE.PointLight(0xff0022, 0, 40, 1.8);
+        light.position.set(0, 2.2, 0);
+        mesh.add(light);
+        const pool = new THREE.Mesh(
+          new THREE.CircleGeometry(4.2, 24),
+          new THREE.MeshBasicMaterial({
+            map: this._poolTex, color: 0xff0022, transparent: true, opacity: 0.4,
+            blending: THREE.AdditiveBlending, depthWrite: false,
+          }),
+        );
+        pool.rotation.x = -Math.PI / 2;
+        this.scene.add(pool);
+        car = { mesh, speed: 0, heading: 0, light, lightTimer: this.rng.next(), pool, staged: true };
+        this.roadblock.push(car);
+      }
+      const fixed = this.city.resolveCircle(spots[i].x, spots[i].z, 1.5);
+      car.mesh.position.set(fixed.x, 0, fixed.z);
+      car.heading = heading + Math.PI; // nose-to-nose with the player
+      car.mesh.rotation.y = car.heading;
+    }
+  }
+
+  clearRoadblock() {
+    for (const car of this.roadblock) {
+      this.scene.remove(car.mesh);
+      if (car.pool) this.scene.remove(car.pool);
+    }
+    this.roadblock = [];
+  }
+
+  // true when the player is touching a roadblock car (ramming it at speed hurts)
+  roadblockHit(playerPos, radius) {
+    for (const car of this.roadblock) {
+      if (Math.hypot(car.mesh.position.x - playerPos.x, car.mesh.position.z - playerPos.z) < radius + 1.7) return true;
+    }
+    return false;
   }
 
   _spawnCar() {
@@ -214,7 +275,7 @@ export class PoliceSystem {
     }
   }
 
-  update(dt, playerPos, playerInCar, playerSpeed) {
+  update(dt, playerPos, playerInCar, playerSpeed, playerHeading = 0) {
     this.heatTimer += dt;
     this.flashTimer += dt;
     // heat dies down: 25s clean and no police within 45 units
@@ -229,8 +290,32 @@ export class PoliceSystem {
       }
     }
     this._respawnFarUnits(playerPos);
+    // v6: roadblock goes up at 4-5 stars (ahead of the player, on their road)
+    // and comes down as soon as the heat drops below 4
+    if (this.wanted >= 4 && this.roadblock.length === 0) {
+      this.spawnRoadblock(playerPos.x, playerPos.z, playerHeading, 30);
+    } else if (this.wanted < 4 && this.roadblock.length > 0) {
+      this.clearRoadblock();
+    }
     this.nearby = false;
     for (const car of this.cars) this._updateCar(car, dt, playerPos, playerInCar, playerSpeed);
+    // v6: roadblock cars never move — only their light bars flash
+    for (const car of this.roadblock) {
+      car.lightTimer += dt;
+      const phase = Math.floor(car.lightTimer * 6) % 2 === 0;
+      car.light.color.setHex(phase ? 0xff0022 : 0x2255ff);
+      car.light.intensity = 170;
+      const red = car.mesh.getObjectByName('lightRed');
+      const blue = car.mesh.getObjectByName('lightBlue');
+      if (red && blue) {
+        red.material.color.setHex(phase ? 0xff0022 : 0x550000);
+        blue.material.color.setHex(phase ? 0x000055 : 0x2255ff);
+      }
+      if (car.pool) {
+        car.pool.position.set(car.mesh.position.x, 0.06, car.mesh.position.z);
+        car.pool.material.color.setHex(phase ? 0xff0022 : 0x2255ff);
+      }
+    }
     let busted = false;
     for (const cop of this.cops) {
       const d = Math.hypot(cop.mesh.position.x - playerPos.x, cop.mesh.position.z - playerPos.z);

@@ -1,3 +1,6 @@
+// v6: Golden Hour Kings — game opens at golden hour (17:30), garage upgrades,
+// weapon wheel (pistol/SMG/shotgun), AMMO-NATION shop + Garage 9 safehouse,
+// Jobs 9-10, roadblock staging in shots, under recording 01a1f269.
 // v5: Golden Hour — game clock (1 game-hour per 75 real seconds, ?tod= override),
 // Sunrise GT + Job 8 car, 8 jobs, under recording 01a1f255.
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
@@ -23,6 +26,23 @@ import { readShotParam, SHOT_STAGING } from './shots.js';
 const SAVE_KEY = 'neonbay-save-v1';
 const VOLT_SPOT = { x: 168, z: -120 };
 const SUNRISE_SPOT = { x: 168, z: 168 }; // v5: the marina, home of the Sunrise GT
+// v6: Garage 9 doubles as the safehouse (save + heal); AMMO-NATION on Volt Row
+// sells health and ammo. Both are real spots with signs in the city.
+const GARAGE_SPOT = { x: -72, z: 168 };
+const SHOP_SPOT = { x: 120, z: 72 };
+// v6: garage upgrades — 3 levels each, cash cost per level. Engine raises top
+// speed + accel, armor cuts damage taken, handling sharpens steering.
+const UPGRADE_DEFS = [
+  { key: 'engine', name: 'ENGINE', costs: [400, 800, 1400] },
+  { key: 'armor', name: 'ARMOR', costs: [400, 800, 1400] },
+  { key: 'handling', name: 'HANDLING', costs: [400, 800, 1400] },
+];
+// v6: weapon wheel — pistol is infinite, SMG and shotgun eat bought ammo
+const WEAPONS = {
+  pistol: { name: 'PISTOL', cooldown: 0.32, damage: 1, spread: 1.1, ammo: null },
+  smg: { name: 'SMG', cooldown: 0.09, damage: 1, spread: 1.1, ammo: 'smg' },
+  shotgun: { name: 'SHOTGUN', cooldown: 0.7, damage: 3, spread: 2.4, ammo: 'shells' },
+};
 // WAVE 88.1 — Neon Bay's own radio: fictional stations and songs, rotated in-game
 const RADIO_SONGS = [
   'Neon Drive — Midnight Mirage',
@@ -84,10 +104,10 @@ export class Game {
     this.shot = readShotParam();
     this.shotMode = null;
     this.time = 0;
-    // v5: game clock — the night opens at 21:00 and runs 1 game-hour per 75
-    // real seconds. ?tod=<hours> pins the time (and freezes it) so screenshots
-    // are deterministic.
-    this.timeOfDay = 21;
+    // v6: game clock — the game opens at GOLDEN HOUR, 17:30, and runs 1
+    // game-hour per 75 real seconds. ?tod=<hours> pins the time (and freezes
+    // it) so screenshots are deterministic.
+    this.timeOfDay = 17.5;
     this.clockFrozen = false;
     const todParam = new URLSearchParams(window.location.search).get('tod');
     if (todParam !== null) {
@@ -106,10 +126,17 @@ export class Game {
     this.radioIndex = 0;
     this.radioTimer = 0;
     this.policeListTimer = 0;
+    // v6: garage upgrades, weapon wheel + ammo, proximity hints
+    this.upgrades = { engine: 0, armor: 0, handling: 0 };
+    this.weapon = 'pistol';
+    this.ammo = { smg: 0, shells: 0 };
+    this._hintedGarage = false;
+    this._hintedShop = false;
 
     this._buildParkedCars();
     this._buildVoltGT();
     this._buildSunriseGT(); // v5: Job 8's car, parked at the marina
+    this._buildGarageAndShop(); // v6: Garage 9 + AMMO-NATION signs and rings
     this._buildTracer();
     this._wireUI();
     this.input.onKey = (code) => this._onKey(code);
@@ -172,6 +199,54 @@ export class Game {
     this.sunriseRing = ring;
   }
 
+  // v6: Garage 9 (upgrades + safehouse) and AMMO-NATION (shop) — a glowing
+  // ground ring plus a lit sign board so both spots read from the street
+  _buildGarageAndShop() {
+    const ring = (x, z, color) => {
+      const r = new THREE.Mesh(
+        new THREE.RingGeometry(3, 3.8, 32),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }),
+      );
+      r.rotation.x = -Math.PI / 2;
+      r.position.set(x, 0.06, z);
+      this.scene.add(r);
+      return r;
+    };
+    ring(GARAGE_SPOT.x, GARAGE_SPOT.z, 0xffd75e);
+    ring(SHOP_SPOT.x, SHOP_SPOT.z, 0x00e5ff);
+    this._makeSign('GARAGE 9', 'SAFEHOUSE · G UPGRADES', 0xffd75e, GARAGE_SPOT.x, GARAGE_SPOT.z);
+    this._makeSign('AMMO-NATION', 'HEALTH · AMMO — PRESS E', 0x00e5ff, SHOP_SPOT.x, SHOP_SPOT.z);
+  }
+
+  // a lit sign board on two posts: canvas texture, double-sided
+  _makeSign(line1, line2, color, x, z) {
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 160;
+    const g = c.getContext('2d');
+    g.fillStyle = '#05060f'; g.fillRect(0, 0, 512, 160);
+    g.strokeStyle = `#${color.toString(16).padStart(6, '0')}`;
+    g.lineWidth = 6; g.strokeRect(6, 6, 500, 148);
+    g.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+    g.font = '900 56px Arial'; g.textAlign = 'center';
+    g.fillText(line1, 256, 72);
+    g.fillStyle = '#eaf6ff';
+    g.font = '700 30px Arial';
+    g.fillText(line2, 256, 122);
+    const tex = new THREE.CanvasTexture(c);
+    const board = new THREE.Mesh(
+      new THREE.PlaneGeometry(9, 2.8),
+      new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, transparent: true }),
+    );
+    board.position.set(x, 4.6, z);
+    this.scene.add(board);
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x222633, roughness: 0.8 });
+    for (const dx of [-3.6, 3.6]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.35, 4.6, 0.35), postMat);
+      post.position.set(x + dx, 2.3, z);
+      this.scene.add(post);
+    }
+  }
+
   _buildTracer() {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
@@ -232,6 +307,15 @@ export class Game {
     document.getElementById('saveBtn').addEventListener('click', () => { this._save(); this.hud.feed('Game saved.'); });
     document.getElementById('restartBtn').addEventListener('click', () => this._restartNight());
     document.getElementById('endBtn').addEventListener('click', () => this._respawn());
+    // v6: garage + shop panels
+    document.getElementById('garageEngine').addEventListener('click', () => this.buyUpgrade('engine'));
+    document.getElementById('garageArmor').addEventListener('click', () => this.buyUpgrade('armor'));
+    document.getElementById('garageHandling').addEventListener('click', () => this.buyUpgrade('handling'));
+    document.getElementById('garageClose').addEventListener('click', () => this.hud.hideGarage());
+    document.getElementById('shopHealth').addEventListener('click', () => this.buyShop('health'));
+    document.getElementById('shopSmg').addEventListener('click', () => this.buyShop('smg'));
+    document.getElementById('shopShells').addEventListener('click', () => this.buyShop('shells'));
+    document.getElementById('shopClose').addEventListener('click', () => this.hud.hideShop());
   }
 
   _updateStartButtons() {
@@ -241,12 +325,12 @@ export class Game {
 
   _updateJobProgress() {
     const el = document.getElementById('jobProgress');
-    if (el) el.textContent = `Jobs done: ${this.missions.completed} / 8`;
+    if (el) el.textContent = `Jobs done: ${this.missions.completed} / 10`;
   }
 
   // respect: 70% from jobs done, 30% from orbs collected
   _respect() {
-    return Math.round((this.missions.completed / 8) * 70 + (this.orbs.collected / ORB_COUNT) * 30);
+    return Math.round((this.missions.completed / 10) * 70 + (this.orbs.collected / ORB_COUNT) * 30);
   }
 
   _updateRespect() {
@@ -283,7 +367,8 @@ export class Game {
     this.hud.setMission(`JOB ${this.missions.active.def.id}: ${this.missions.active.def.title}`, step ? step.text : '', stage, next);
   }
 
-  // Bay PD response list: nearest named units with distances
+  // Bay PD response list: helicopter first, then the roadblock (the two
+  // things the player most needs to see), then the nearest units
   _refreshPoliceList() {
     const pp = this.inCar ? this.playerCarMesh.position : this.player.position;
     const units = [];
@@ -295,11 +380,16 @@ export class Game {
       const d = Math.round(Math.hypot(cop.mesh.position.x - pp.x, cop.mesh.position.z - pp.z));
       units.push({ name: `NBPD-F${i + 1}`, dist: `${d}m`, d });
     });
-    if (this.police.heli) {
-      units.push({ name: 'AIR-1 HELI', dist: 'overhead', d: 0 });
-    }
     units.sort((a, b) => a.d - b.d);
-    this.hud.setPoliceList(units);
+    const head = [];
+    if (this.police.heli) head.push({ name: 'AIR-1 HELI', dist: 'overhead', d: 0 });
+    // v6: a roadblock up ahead reads as its own response unit
+    if (this.police.roadblock.length > 0) {
+      const rb = this.police.roadblock[0].mesh.position;
+      const d = Math.round(Math.hypot(rb.x - pp.x, rb.z - pp.z));
+      head.push({ name: 'ROADBLOCK', dist: `${d}m ahead`, d });
+    }
+    this.hud.setPoliceList([...head, ...units]);
   }
 
   // ---------- save / load ----------
@@ -318,6 +408,10 @@ export class Game {
         health: this.player.health,
         orbs: this.orbs.collected,
         pos: { x: this.player.position.x, z: this.player.position.z },
+        // v6: garage upgrades, weapon + ammo persist with the save
+        upgrades: this.upgrades,
+        weapon: this.weapon,
+        ammo: this.ammo,
       }));
     } catch { /* storage unavailable */ }
   }
@@ -334,6 +428,11 @@ export class Game {
       this.missions.completed = this.saveData.completed || 0;
       this.player.health = this.saveData.health || 100;
       this.orbs.setCollected(this.saveData.orbs || 0);
+      // v6: restore upgrades, weapon and ammo from the save
+      if (this.saveData.upgrades) this.upgrades = { ...this.upgrades, ...this.saveData.upgrades };
+      if (this.saveData.weapon && WEAPONS[this.saveData.weapon]) this.weapon = this.saveData.weapon;
+      if (this.saveData.ammo) this.ammo = { ...this.ammo, ...this.saveData.ammo };
+      this._refreshWeaponHud();
       this.player.reset(this.saveData.pos?.x ?? 0, this.saveData.pos?.z ?? 24);
       this.hud.feed('Save loaded. Welcome back to Neon Bay.');
     } else {
@@ -355,6 +454,11 @@ export class Game {
     this.missions.completed = 0;
     this.missions.active = null;
     this.orbs.reset();
+    // v6: a fresh night resets upgrades, weapon and ammo too
+    this.upgrades = { engine: 0, armor: 0, handling: 0 };
+    this.weapon = 'pistol';
+    this.ammo = { smg: 0, shells: 0 };
+    this._refreshWeaponHud();
     this.player.reset(0, 24);
     this.police.clearWanted();
     this._exitCar(false);
@@ -380,7 +484,7 @@ export class Game {
   // ---------- missions ----------
   _offerMission() {
     if (this.missions.done) {
-      this._say('VEX', 'You did it, Rook. Eight jobs, one legend. Neon Bay is yours now — free roam, keep the cash coming.');
+      this._say('VEX', 'You did it, Rook. Ten jobs, one legend. Neon Bay is yours now — free roam, keep the cash coming.');
       return;
     }
     const def = this.missions.currentDef;
@@ -394,10 +498,106 @@ export class Game {
         this.hud.showMissionCard(`JOB ${started.id}`, `${started.title} — $${started.reward}`, 3200, this._vexQuote(started.intro));
         if (started.id === 4) this.police.addCrime(2);
         if (started.id === 7) this.police.addCrime(4); // five-star heat from the start
+        if (started.id === 9) this.police.addCrime(4); // v6: HIGH TIDE runs under 4 stars
+        if (started.id === 10) this.police.addCrime(5); // v6: the finale runs under 5 stars
         this._maybeSpawnFight();
         this._updateVoltRing();
       }
     });
+  }
+
+  // ---------- v6: garage upgrades, shop, safehouse, weapon wheel ----------
+  // armor cuts every hit: 15% less damage per armor level (min 1 damage)
+  _damagePlayer(amount) {
+    const scaled = Math.max(1, Math.round(amount * (1 - 0.15 * this.upgrades.armor)));
+    return this.player.damage(scaled);
+  }
+
+  buyUpgrade(key) {
+    const def = UPGRADE_DEFS.find((d) => d.key === key);
+    if (!def) return;
+    const level = this.upgrades[key];
+    if (level >= 3) { this.hud.feed(`${def.name} is already maxed out (LV 3).`); return; }
+    const cost = def.costs[level];
+    if (this.cash < cost) {
+      this.hud.feed(`Not enough cash for ${def.name} LV ${level + 1} — need $${cost}, you have $${this.cash}.`);
+      return;
+    }
+    this.cash -= cost;
+    this.upgrades[key] = level + 1;
+    this.hud.setCash(this.cash);
+    this._applyUpgradesToCar();
+    this.hud.setGarage(this.upgrades);
+    this.audio.cash();
+    this.hud.feed(`${def.name} upgraded to LV ${level + 1} for $${cost}.`);
+    this._save();
+  }
+
+  _applyUpgradesToCar() {
+    if (this.playerCar) this.playerCar.applyUpgrades(this.upgrades.engine, this.upgrades.handling);
+  }
+
+  buyShop(item) {
+    if (item === 'health') {
+      if (this.cash < 100) { this.hud.feed('Not enough cash for a medkit — need $100.'); return; }
+      if (this.player.health >= 100) { this.hud.feed('Health is already full.'); return; }
+      this.cash -= 100;
+      this.player.heal(100);
+      this.hud.setHealth(this.player.health);
+      this.hud.feed('Medkit used — health restored to full.');
+    } else if (item === 'smg') {
+      if (this.cash < 150) { this.hud.feed('Not enough cash for SMG ammo — need $150.'); return; }
+      this.cash -= 150;
+      this.ammo.smg += 120;
+      this.hud.feed('Bought 120 SMG rounds.');
+    } else if (item === 'shells') {
+      if (this.cash < 150) { this.hud.feed('Not enough cash for shells — need $150.'); return; }
+      this.cash -= 150;
+      this.ammo.shells += 24;
+      this.hud.feed('Bought 24 shotgun shells.');
+    }
+    this.hud.setCash(this.cash);
+    this._refreshWeaponHud();
+    this.audio.cash();
+    this._save();
+  }
+
+  // E on foot: shop first, then safehouse, then car. (In a car, E exits.)
+  _interact() {
+    if (this.inCar) { this._exitCar(true); return; }
+    const px = this.player.position.x, pz = this.player.position.z;
+    if (Math.hypot(px - SHOP_SPOT.x, pz - SHOP_SPOT.z) < 7) {
+      this.hud.showShop();
+      this.audio.click();
+      return;
+    }
+    if (Math.hypot(px - GARAGE_SPOT.x, pz - GARAGE_SPOT.z) < 7) {
+      // safehouse: save + full heal
+      this.player.heal(100);
+      this.hud.setHealth(this.player.health);
+      this._save();
+      this.audio.fanfare();
+      this.hud.feed('Safehouse: game saved, health restored to full.');
+      return;
+    }
+    this._toggleCar();
+  }
+
+  _selectWeapon(key) {
+    this.weapon = key;
+    this._refreshWeaponHud();
+    this.audio.click();
+    this.hud.feed(`Weapon: ${WEAPONS[key].name}${WEAPONS[key].ammo ? ` — ${this.ammo[WEAPONS[key].ammo]} rounds left` : ' — infinite ammo'}.`);
+  }
+
+  _cycleWeapon() {
+    const order = ['pistol', 'smg', 'shotgun'];
+    this._selectWeapon(order[(order.indexOf(this.weapon) + 1) % order.length]);
+  }
+
+  _refreshWeaponHud() {
+    const w = WEAPONS[this.weapon];
+    this.hud.setWeapon(w.name, w.ammo ? String(this.ammo[w.ammo]) : '∞');
   }
 
   _maybeSpawnFight() {
@@ -462,8 +662,24 @@ export class Game {
     }
     if (this.state === 'paused' && code === 'Escape') { this._resume(); return; }
     if (this.state !== 'playing') return;
-    if (code === 'KeyE') this._toggleCar();
+    if (code === 'KeyE') this._interact();
     if (code === 'KeyF') this._punch();
+    // v6: G opens the garage upgrades at Garage 9 (engine / armor / handling)
+    if (code === 'KeyG') {
+      const pp = this.inCar ? this.playerCarMesh.position : this.player.position;
+      if (Math.hypot(pp.x - GARAGE_SPOT.x, pp.z - GARAGE_SPOT.z) < 9) {
+        this.hud.showGarage(this.upgrades);
+        this.audio.click();
+      } else {
+        this.hud.feed('Garage upgrades are at Garage 9, on the south-west pier road.');
+      }
+      return;
+    }
+    // v6: weapon wheel — 1/2/3 pick, Q cycles pistol → SMG → shotgun
+    if (code === 'Digit1') { this._selectWeapon('pistol'); return; }
+    if (code === 'Digit2') { this._selectWeapon('smg'); return; }
+    if (code === 'Digit3') { this._selectWeapon('shotgun'); return; }
+    if (code === 'KeyQ') { this._cycleWeapon(); return; }
     if (code === 'KeyH') {
       // car horn: honk, and nearby pedestrians scatter
       this.audio.horn();
@@ -488,10 +704,20 @@ export class Game {
 
   _onShoot() {
     if (this.state !== 'playing' || this.inCar) return;
-    const shot = this.player.shoot();
+    // v6: weapon wheel — SMG/shotgun eat bought ammo; pistol is infinite
+    const w = WEAPONS[this.weapon];
+    if (w.ammo) {
+      if (this.ammo[w.ammo] <= 0) {
+        this.hud.feed(`Out of ${w.name} ammo — buy more at AMMO-NATION on Volt Row.`);
+        return;
+      }
+      this.ammo[w.ammo] -= 1;
+      this._refreshWeaponHud();
+    }
+    const shot = this.player.shoot(w.cooldown);
     if (!shot) return;
     this.audio.gunshot();
-    this._fireBullet();
+    this._fireBullet(w.damage, w.spread);
     if (this.time - this.lastShotCrime > 5) {
       this.lastShotCrime = this.time;
       this.police.addCrime(1);
@@ -499,7 +725,9 @@ export class Game {
     }
   }
 
-  _fireBullet() {
+  // v6: damage and spread come from the current weapon (shotgun hits harder
+  // and wider, SMG and pistol hit one target)
+  _fireBullet(damage = 1, spread = 1.1) {
     const dir = new THREE.Vector3();
     this.camera.getWorldDirection(dir);
     const origin = this.player.position.clone().add(new THREE.Vector3(0, 1.6, 0));
@@ -519,7 +747,7 @@ export class Game {
       const along = to.dot(dir);
       if (along < 0 || along > bestD) continue;
       const perp = to.clone().addScaledVector(dir, -along).length();
-      if (perp < t.r) { best = t; bestD = along; }
+      if (perp < Math.max(t.r, spread)) { best = t; bestD = along; }
     }
     // buildings block the shot
     const end = origin.clone().addScaledVector(dir, bestD);
@@ -532,7 +760,7 @@ export class Game {
     } else if (best.kind === 'cop') {
       this._damageCop(best.ref);
     } else if (best.kind === 'enemy') {
-      best.ref.hp -= 1;
+      best.ref.hp -= damage;
       if (best.ref.hp <= 0) this._downEnemy(best.ref);
     }
   }
@@ -621,6 +849,7 @@ export class Game {
     this.playerCarMesh = car.mesh;
     this.playerCar = new CarDriver(car.mesh);
     this.playerCar.heading = car.mesh.rotation.y;
+    this._applyUpgradesToCar(); // v6: garage upgrades ride with every car you drive
     this.player.group.visible = false;
     this.hud.setCrosshair(false);
     // headlight
@@ -699,8 +928,9 @@ export class Game {
     const s = SHOT_STAGING[name];
     if (!s) return;
     this.shotMode = s.mode;
-    // v5: staged shots pin the time of day (golden hour cover, dusk chase,
-    // dawn mission, night street) and freeze the clock so the light is exact
+    // v6: staged shots pin the time of day (golden-hour cover and chase with
+    // the roadblock, golden-hour Job 9 mission at the marina, bright noon
+    // street) and freeze the clock so the light is exact
     if (s.tod !== undefined && s.tod !== null) {
       this.timeOfDay = s.tod;
       this.clockFrozen = true;
@@ -715,16 +945,10 @@ export class Game {
     this.hud.setOrbs(this.orbs.collected, ORB_COUNT);
     this.hud.setRadio(RADIO_SONGS[0]);
     this._updateRespect();
-    if (s.mission === 1) {
-      // cover shot: job 1 active so the mission panel shows stage + NEXT step
-      const def = this.missions.startNext();
-      if (def) {
-        this._refreshMissionPanel();
-        this.hud.setJob(`JOB ${def.id}`);
-        this.hud.showMissionCard(`JOB ${def.id}`, `${def.title} — $${def.reward}`, 30000, this._vexQuote(def.intro));
-      }
-    } else if (s.mission === 2) {
-      this.missions.completed = 1;
+    if (s.mission > 0) {
+      // v6: any job can be staged — complete the earlier ones, start this one,
+      // so the mission panel shows its stage + NEXT step
+      this.missions.completed = s.mission - 1;
       const def = this.missions.startNext();
       if (def) {
         this._refreshMissionPanel();
@@ -738,10 +962,12 @@ export class Game {
     if (s.wanted > 0) {
       for (let i = 0; i < s.wanted; i++) this.police.addCrime(1);
       // pull police cars onto the same street AHEAD of the player, oncoming, so
-      // the chase is visible in frame; they hold position (staged) for the shot
+      // the chase is visible in frame; they hold position (staged) for the shot.
+      // v6: staged closer (12/20/28) so the roadblock at 48 stands alone in
+      // the clear gap ahead of the chase pack instead of hiding inside it
       const fwd = { x: Math.sin(s.player.heading), z: Math.cos(s.player.heading) };
       this.police.cars.forEach((car, i) => {
-        const ahead = 20 + i * 10;
+        const ahead = 12 + i * 8;
         const lane = i % 2 === 0 ? -2.8 : 2.8;
         car.mesh.position.set(
           s.player.x + fwd.x * ahead + fwd.z * lane,
@@ -763,6 +989,12 @@ export class Game {
           s.player.x + fwd.x * 48, 13,
           s.player.z + fwd.z * 48,
         );
+      }
+      // v6: at 4-5 stars the PD roadblock sits across the road ahead — staged
+      // beyond the last chase car (48 ahead) so it reads in frame, not inside
+      // the chase pack
+      if (s.wanted >= 4) {
+        this.police.spawnRoadblock(s.player.x, s.player.z, s.player.heading, 48);
       }
     }
     if (s.mode === 'car') {
@@ -909,12 +1141,13 @@ export class Game {
 
   _updateWorld(dt) {
     const pp = this.inCar ? this.playerCarMesh.position : this.player.position;
-    // v5: the game clock runs 1 game-hour per 75 real seconds; the city and
-    // the HUD clock follow it, and the exposure eases off a touch by day
+    // v6: the game clock runs 1 game-hour per 75 real seconds; the city and
+    // the HUD clock follow it, and the exposure lifts a touch by day
     if (!this.clockFrozen) this.timeOfDay = (this.timeOfDay + dt / 75) % 24;
     this.city.setTimeOfDay(this.timeOfDay);
     this.hud.setClock(this.timeOfDay);
-    this.renderer.toneMappingExposure = 1.3 - 0.25 * this.city.dayFactor;
+    // v6: exposure lifts a touch by day so noon reads bright, not dusk
+    this.renderer.toneMappingExposure = 1.25 + 0.1 * this.city.dayFactor;
     // player / car
     if (this.inCar && this.playerCar) {
       const res = this.playerCar.update(dt, this.input, this.city);
@@ -936,7 +1169,20 @@ export class Game {
         this.shake = 0.7;
         this._spawnSmoke(this.playerCarMesh.position, 6);
         this.hud.flashDamage();
-        if (this.player.damage(8)) this._wasted();
+        if (this._damagePlayer(8)) this._wasted(); // v6: armor scales the hit
+      }
+      // v6: ramming the roadblock at speed hurts just as much — and slows you
+      if (this.police.roadblockHit(this.playerCarMesh.position, 2.2)
+        && Math.abs(this.playerCar.speed) > 10
+        && this.time - (this._lastRam || 0) > 1.5) {
+        this._lastRam = this.time;
+        this.audio.crash();
+        this.shake = 0.8;
+        this._spawnSmoke(this.playerCarMesh.position, 8);
+        this.hud.flashDamage();
+        this.playerCar.speed *= 0.35;
+        this.hud.feed('You smashed through the roadblock!');
+        if (this._damagePlayer(10)) this._wasted();
       }
       this.audio.setEngine(this.playerCar.speed * 3.6, res.throttle > 0);
       this.hud.setSpeed(this.playerCar.speed * 3.6, 'DRIVING');
@@ -949,7 +1195,8 @@ export class Game {
     }
     // world systems
     this.traffic.update(dt, pp, this.inCar ? this.playerCar.speed : 0, this.time);
-    const pol = this.police.update(dt, pp, this.inCar, this.inCar ? this.playerCar.speed : 0);
+    // v6: the PD gets the player's heading so the roadblock lands on their road
+    const pol = this.police.update(dt, pp, this.inCar, this.inCar ? this.playerCar.speed : 0, this.inCar ? this.playerCar.heading : this.player.yaw);
     if (pol.busted) { this._busted(); return; }
     this.audio.updateSiren(dt, this.police.nearby);
     this.audio.updateRotor(this.police.heliActive);
@@ -997,11 +1244,22 @@ export class Game {
           this.audio.punch();
           this.hud.flashDamage();
           this.shake = 0.4;
-          if (this.player.damage(8)) { this._wasted(); return; }
+          if (this._damagePlayer(8)) { this._wasted(); return; } // v6: armor scales the hit
           this.hud.setHealth(this.player.health);
         }
       }
     }
+    // v6: one-time hints when the player first reaches the garage / shop
+    const dGarage = Math.hypot(pp.x - GARAGE_SPOT.x, pp.z - GARAGE_SPOT.z);
+    const dShop = Math.hypot(pp.x - SHOP_SPOT.x, pp.z - SHOP_SPOT.z);
+    if (dGarage < 12 && !this._hintedGarage) {
+      this._hintedGarage = true;
+      this.hud.feed('Garage 9: press G for upgrades, E to save + heal (safehouse).');
+    } else if (dGarage > 24) this._hintedGarage = false;
+    if (dShop < 12 && !this._hintedShop) {
+      this._hintedShop = true;
+      this.hud.feed('AMMO-NATION: press E to buy health and ammo.');
+    } else if (dShop > 24) this._hintedShop = false;
     // missions
     const ev = this.missions.update(dt, pp, this.inCar, this.police.wanted);
     if (ev) this._handleMissionEvent(ev);
@@ -1013,8 +1271,10 @@ export class Game {
     this.hud.drawMinimap({
       buildings: this.city.buildings,
       traffic: this.traffic.cars.map((c) => ({ x: c.mesh.position.x, z: c.mesh.position.z })),
+      // v6: roadblock cars show on the minimap as police
       police: [...this.police.cars.map((c) => ({ x: c.mesh.position.x, z: c.mesh.position.z })),
-               ...this.police.cops.map((c) => ({ x: c.mesh.position.x, z: c.mesh.position.z }))],
+               ...this.police.cops.map((c) => ({ x: c.mesh.position.x, z: c.mesh.position.z })),
+               ...this.police.roadblock.map((c) => ({ x: c.mesh.position.x, z: c.mesh.position.z }))],
       heli: this.police.heliPosition,
       orbs: this.orbs.remaining().map((o) => ({ x: o.x, z: o.z })),
       player: { x: pp.x, z: pp.z, heading: this.inCar ? this.playerCar.heading : this.player.yaw },

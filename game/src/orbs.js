@@ -1,3 +1,4 @@
+// v6: Golden Hour Kings — header touch under recording 01a1f269 (file content unchanged).
 // v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Collectible neon orbs for Neon Bay: a side activity on top of the story jobs.

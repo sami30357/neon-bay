@@ -1,3 +1,4 @@
+// v6: Golden Hour Kings — the game opens at golden hour (17:30), under recording 01a1f269.
 // v5: Golden Hour — day-night cycle (setTimeOfDay) + Job 8 support, under recording 01a1f255.
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Neon Bay's rain-slick night city: a street grid, towers with lit windows, neon
@@ -25,8 +26,8 @@ export const ROAD_Y = 0.02;
 const TOD_KEYS = [
   { t: 0,    sky: 0x04050d, fog: 0x070818, fogDensity: 0.0032, hemi: 0x3a3a88, hemiInt: 1.5, amb: 0x223055, ambInt: 0.5, light: 0x8fa8ff, lightInt: 0.6, lightPos: [-120, 180, 80],  stars: 0.85, rain: 1.0,  neon: 1.0,  sun: 0,    moon: 1,   day: 0,    cloud: 0x0d1024, ground: 0x1a2032 },
   { t: 6,    sky: 0x4a3550, fog: 0x3a2f45, fogDensity: 0.0028, hemi: 0x8a6a9a, hemiInt: 1.7, amb: 0x55405f, ambInt: 0.6, light: 0xffb080, lightInt: 0.55, lightPos: [180, 40, 60],   stars: 0.25, rain: 0.7,  neon: 0.85, sun: 0.25, moon: 0.6, day: 0.15, cloud: 0x4a3f5e, ground: 0x232838 },
-  { t: 9,    sky: 0x87b5d9, fog: 0x9db8cc, fogDensity: 0.0016, hemi: 0xbfd9ff, hemiInt: 2.2, amb: 0x8899bb, ambInt: 0.7, light: 0xfff2c0, lightInt: 1.6, lightPos: [140, 220, 60],  stars: 0,    rain: 0.15, neon: 0.45, sun: 1,    moon: 0,   day: 1,    cloud: 0xcfd8e8, ground: 0x3a4556 },
-  { t: 16,   sky: 0x8fb4d8, fog: 0xa8bccb, fogDensity: 0.0016, hemi: 0xbfd9ff, hemiInt: 2.2, amb: 0x8899bb, ambInt: 0.7, light: 0xffe8b0, lightInt: 1.5, lightPos: [-140, 200, 60], stars: 0,    rain: 0.15, neon: 0.45, sun: 1,    moon: 0,   day: 1,    cloud: 0xd8dce8, ground: 0x3a4556 },
+  { t: 9,    sky: 0x87b5d9, fog: 0x9db8cc, fogDensity: 0.0016, hemi: 0xbfd9ff, hemiInt: 2.5, amb: 0x8899bb, ambInt: 0.7, light: 0xfff2c0, lightInt: 2.1, lightPos: [140, 220, 60],  stars: 0,    rain: 0.15, neon: 0.45, sun: 1,    moon: 0,   day: 1,    cloud: 0xcfd8e8, ground: 0x6a7686 },
+  { t: 16,   sky: 0x8fb4d8, fog: 0xa8bccb, fogDensity: 0.0016, hemi: 0xbfd9ff, hemiInt: 2.5, amb: 0x8899bb, ambInt: 0.7, light: 0xffe8b0, lightInt: 2.0, lightPos: [-140, 200, 60], stars: 0,    rain: 0.15, neon: 0.45, sun: 1,    moon: 0,   day: 1,    cloud: 0xd8dce8, ground: 0x6a7686 },
   { t: 17.5, sky: 0xe8853d, fog: 0xd88a55, fogDensity: 0.0022, hemi: 0xffb080, hemiInt: 2.0, amb: 0xcc8855, ambInt: 0.6, light: 0xff8a3d, lightInt: 1.8, lightPos: [-220, 45, 40],  stars: 0.05, rain: 0.25, neon: 0.8,  sun: 1,    moon: 0,   day: 0.55, cloud: 0xe8a06a, ground: 0x33281f },
   { t: 19,   sky: 0x2a1a4a, fog: 0x241838, fogDensity: 0.0028, hemi: 0x5a4a8a, hemiInt: 1.6, amb: 0x3a2a55, ambInt: 0.55, light: 0xff7a5a, lightInt: 0.7, lightPos: [-200, 25, 60],  stars: 0.4,  rain: 0.6,  neon: 1.0,  sun: 0.15, moon: 0.5, day: 0.1,  cloud: 0x2a2044, ground: 0x1e2233 },
   { t: 21,   sky: 0x04050d, fog: 0x070818, fogDensity: 0.0032, hemi: 0x3a3a88, hemiInt: 1.5, amb: 0x223055, ambInt: 0.5, light: 0x8fa8ff, lightInt: 0.6, lightPos: [-120, 180, 80],  stars: 0.85, rain: 1.0,  neon: 1.0,  sun: 0,    moon: 1,   day: 0,    cloud: 0x0d1024, ground: 0x1a2032 },
@@ -155,7 +156,7 @@ export class City {
     this._buildSky();
     this._buildSkyline();
     this._buildHelipad();
-    this.setTimeOfDay(21); // v5: the game opens at 9 PM, deep night
+    this.setTimeOfDay(17.5); // v6: the game opens at golden hour, 17:30 — bright first impression
   }
 
   // v5: day-night cycle — t is game hours in [0, 24). Lerps the whole look of
@@ -209,7 +210,7 @@ export class City {
     this.rain.visible = rainF > 0.05;
     const neonF = lerp(a.neon, b.neon);
     for (const m of this.signMats) m.opacity = 0.45 + 0.55 * neonF;
-    for (const rec of this.buildingMats) rec.mat.emissiveIntensity = rec.base * (1 - 0.7 * day);
+    for (const rec of this.buildingMats) rec.mat.emissiveIntensity = rec.base * (1 - 0.85 * day); // v6: windows go mostly dark by day
     for (const rec of this.streetLights) rec.light.intensity = rec.base * (1 - 0.85 * day);
     // lamp globes go from warm tungsten at night to dull grey by day
     this.lampMat.color.copy(this._c1.setHex(0xffe9b0)).lerp(this._c2.setHex(0x8a8a7a), day);
@@ -240,8 +241,8 @@ export class City {
     this.signMats = [];
     this.buildingMats = [];
     this.streetLights = [];
-    this.timeOfDay = 21;
-    this.dayFactor = 0;
+    this.timeOfDay = 17.5; // v6: golden-hour open
+    this.dayFactor = 0.55;
     this._c1 = new THREE.Color();
     this._c2 = new THREE.Color();
   }
