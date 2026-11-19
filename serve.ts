@@ -1,3 +1,4 @@
+// v7: Sun-Kissed Bay — header touch under recording 01a1f27b (server unchanged).
 // v6: Golden Hour Kings — header touch under recording 01a1f269 (file content unchanged).
 // v5: Golden Hour — header touch under recording 01a1f255 (server unchanged).
 // A tiny static server for game/ (Node 22, standard library only), so an entry can be played

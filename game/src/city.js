@@ -1,3 +1,5 @@
+// v7: Sun-Kissed Bay — bright sun-soaked day look (two-texture towers: light
+// face + lit-window glow map), ground helipad near the marina, under recording 01a1f27b.
 // v6: Golden Hour Kings — the game opens at golden hour (17:30), under recording 01a1f269.
 // v5: Golden Hour — day-night cycle (setTimeOfDay) + Job 8 support, under recording 01a1f255.
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
@@ -26,8 +28,8 @@ export const ROAD_Y = 0.02;
 const TOD_KEYS = [
   { t: 0,    sky: 0x04050d, fog: 0x070818, fogDensity: 0.0032, hemi: 0x3a3a88, hemiInt: 1.5, amb: 0x223055, ambInt: 0.5, light: 0x8fa8ff, lightInt: 0.6, lightPos: [-120, 180, 80],  stars: 0.85, rain: 1.0,  neon: 1.0,  sun: 0,    moon: 1,   day: 0,    cloud: 0x0d1024, ground: 0x1a2032 },
   { t: 6,    sky: 0x4a3550, fog: 0x3a2f45, fogDensity: 0.0028, hemi: 0x8a6a9a, hemiInt: 1.7, amb: 0x55405f, ambInt: 0.6, light: 0xffb080, lightInt: 0.55, lightPos: [180, 40, 60],   stars: 0.25, rain: 0.7,  neon: 0.85, sun: 0.25, moon: 0.6, day: 0.15, cloud: 0x4a3f5e, ground: 0x232838 },
-  { t: 9,    sky: 0x87b5d9, fog: 0x9db8cc, fogDensity: 0.0016, hemi: 0xbfd9ff, hemiInt: 2.5, amb: 0x8899bb, ambInt: 0.7, light: 0xfff2c0, lightInt: 2.1, lightPos: [140, 220, 60],  stars: 0,    rain: 0.15, neon: 0.45, sun: 1,    moon: 0,   day: 1,    cloud: 0xcfd8e8, ground: 0x6a7686 },
-  { t: 16,   sky: 0x8fb4d8, fog: 0xa8bccb, fogDensity: 0.0016, hemi: 0xbfd9ff, hemiInt: 2.5, amb: 0x8899bb, ambInt: 0.7, light: 0xffe8b0, lightInt: 2.0, lightPos: [-140, 200, 60], stars: 0,    rain: 0.15, neon: 0.45, sun: 1,    moon: 0,   day: 1,    cloud: 0xd8dce8, ground: 0x6a7686 },
+  { t: 9,    sky: 0x9fd0f0, fog: 0xbcd8ef, fogDensity: 0.0016, hemi: 0xbfd9ff, hemiInt: 2.7, amb: 0x8899bb, ambInt: 0.7, light: 0xfff2c0, lightInt: 2.3, lightPos: [140, 220, 60],  stars: 0,    rain: 0.15, neon: 0.45, sun: 1,    moon: 0,   day: 1,    cloud: 0xe8eef8, ground: 0x8b95a5 },
+  { t: 16,   sky: 0x9fd0f0, fog: 0xbcd8ef, fogDensity: 0.0016, hemi: 0xbfd9ff, hemiInt: 2.7, amb: 0x8899bb, ambInt: 0.7, light: 0xffe8b0, lightInt: 2.2, lightPos: [-140, 200, 60], stars: 0,    rain: 0.15, neon: 0.45, sun: 1,    moon: 0,   day: 1,    cloud: 0xe8eef8, ground: 0x8b95a5 },
   { t: 17.5, sky: 0xe8853d, fog: 0xd88a55, fogDensity: 0.0022, hemi: 0xffb080, hemiInt: 2.0, amb: 0xcc8855, ambInt: 0.6, light: 0xff8a3d, lightInt: 1.8, lightPos: [-220, 45, 40],  stars: 0.05, rain: 0.25, neon: 0.8,  sun: 1,    moon: 0,   day: 0.55, cloud: 0xe8a06a, ground: 0x33281f },
   { t: 19,   sky: 0x2a1a4a, fog: 0x241838, fogDensity: 0.0028, hemi: 0x5a4a8a, hemiInt: 1.6, amb: 0x3a2a55, ambInt: 0.55, light: 0xff7a5a, lightInt: 0.7, lightPos: [-200, 25, 60],  stars: 0.4,  rain: 0.6,  neon: 1.0,  sun: 0.15, moon: 0.5, day: 0.1,  cloud: 0x2a2044, ground: 0x1e2233 },
   { t: 21,   sky: 0x04050d, fog: 0x070818, fogDensity: 0.0032, hemi: 0x3a3a88, hemiInt: 1.5, amb: 0x223055, ambInt: 0.5, light: 0x8fa8ff, lightInt: 0.6, lightPos: [-120, 180, 80],  stars: 0.85, rain: 1.0,  neon: 1.0,  sun: 0,    moon: 1,   day: 0,    cloud: 0x0d1024, ground: 0x1a2032 },
@@ -59,11 +61,39 @@ const SIGN_WORDS = [
   ['24H DONUTS', '#ffae00'], ['HOTEL NOVA', '#ff2d78'],
 ];
 
-function windowTexture(rng, hue) {
+// v7: two textures per tower instead of one dark window texture doing both
+// jobs. The FACE is a LIGHT sun-soaked facade (warm sandstone / pale
+// blue-grey / warm white) with DARK window rectangles and a few warm-lit
+// ones, so towers read bright by day. The GLOW is a BLACK map with LIT
+// windows only, used as the emissiveMap, so the same tower glows at night.
+const FACE_COLORS = ['#c9b8a0', '#b8c4d0', '#d8d0c0', '#c2b49a', '#aebac8'];
+function buildingFaceTexture(rng, base) {
   const c = document.createElement('canvas');
   c.width = 128; c.height = 256;
   const g = c.getContext('2d');
-  g.fillStyle = '#0b0e1a'; g.fillRect(0, 0, 128, 256);
+  g.fillStyle = base; g.fillRect(0, 0, 128, 256);
+  const cols = 6, rows = 14;
+  const litColors = ['#ffd9a0', '#9be8ff', '#ff9ad5', '#fff3c4'];
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const r = rng.next();
+      if (r < 0.62) g.fillStyle = '#1a2030'; // dark glass by day
+      else if (r < 0.72) { g.fillStyle = rng.pick(litColors); g.globalAlpha = rng.range(0.7, 1); }
+      else continue; // bare facade — no window drawn
+      g.fillRect(8 + x * 19, 10 + y * 17, 12, 9);
+      g.globalAlpha = 1;
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function buildingGlowTexture(rng) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#000000'; g.fillRect(0, 0, 128, 256);
   const cols = 6, rows = 14;
   const litColors = ['#ffd9a0', '#9be8ff', '#ff9ad5', '#fff3c4', '#c4b5fd'];
   for (let y = 0; y < rows; y++) {
@@ -73,14 +103,8 @@ function windowTexture(rng, hue) {
         g.globalAlpha = rng.range(0.6, 1);
         g.fillRect(8 + x * 19, 10 + y * 17, 12, 9);
         g.globalAlpha = 1;
-      } else {
-        g.fillStyle = '#10152a';
-        g.fillRect(8 + x * 19, 10 + y * 17, 12, 9);
       }
     }
-  }
-  if (hue) {
-    g.fillStyle = hue; g.globalAlpha = 0.12; g.fillRect(0, 0, 128, 256); g.globalAlpha = 1;
   }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -132,6 +156,7 @@ export class City {
     this.rng = makeRng(CITY_SEED);
     this.colliders = []; // {minX, maxX, minZ, maxZ}
     this.buildings = [];
+    this.plazas = []; // v7: empty blocks (no buildings) — homes for the ground helipad
     this.rain = null;
     this.rainDrops = null; // {x, y, z, vel} per streak
     this.rainVelocity = null;
@@ -156,6 +181,7 @@ export class City {
     this._buildSky();
     this._buildSkyline();
     this._buildHelipad();
+    this._buildGroundHelipad(); // v7: the player helicopter's home, near the marina
     this.setTimeOfDay(17.5); // v6: the game opens at golden hour, 17:30 — bright first impression
   }
 
@@ -210,7 +236,14 @@ export class City {
     this.rain.visible = rainF > 0.05;
     const neonF = lerp(a.neon, b.neon);
     for (const m of this.signMats) m.opacity = 0.45 + 0.55 * neonF;
-    for (const rec of this.buildingMats) rec.mat.emissiveIntensity = rec.base * (1 - 0.85 * day); // v6: windows go mostly dark by day
+    for (const rec of this.buildingMats) {
+      rec.mat.emissiveIntensity = rec.base * (1 - 0.85 * day); // v6: windows go mostly dark by day
+      // v7: the light face texture is tinted from dark navy at night to white
+      // at noon, so towers read sun-soaked by day instead of black
+      rec.mat.color.copy(this._c1.setHex(0x2a3048)).lerp(this._c2.setHex(0xffffff), day);
+    }
+    // v7: sidewalks go from dark asphalt-grey at night to light grey by day
+    if (this.walkMat) this.walkMat.color.copy(this._c1.setHex(0x232838)).lerp(this._c2.setHex(0x9aa0ac), day);
     for (const rec of this.streetLights) rec.light.intensity = rec.base * (1 - 0.85 * day);
     // lamp globes go from warm tungsten at night to dull grey by day
     this.lampMat.color.copy(this._c1.setHex(0xffe9b0)).lerp(this._c2.setHex(0x8a8a7a), day);
@@ -293,6 +326,7 @@ export class City {
     }
     // sidewalks: raised light strips along every street edge
     const walkMat = new THREE.MeshStandardMaterial({ color: 0x232838, roughness: 0.6, metalness: 0.3 });
+    this.walkMat = walkMat; // v7: day-night cycle lightens the sidewalks by day
     for (const p of this.streetPositions) {
       const w1 = new THREE.Mesh(new THREE.BoxGeometry(3, 0.24, CITY_EXTENT * 2 + 24), walkMat);
       w1.position.set(p + STREET_HALF + 1.5, 0.12, 0);
@@ -311,11 +345,11 @@ export class City {
 
   _buildBuildings() {
     const rng = this.rng;
-    const texA = windowTexture(rng, null);
-    const texB = windowTexture(rng, '#ff2d78');
-    const texC = windowTexture(rng, '#00e5ff');
-    const texD = windowTexture(rng, '#ffae00');
-    const texes = [texA, texB, texC, texD];
+    // v7: a light face + a black glow map per facade colour, drawn once and
+    // cloned per tower (same repeat on both so the windows line up)
+    const faceTexes = FACE_COLORS.map((c) => buildingFaceTexture(rng, c));
+    const glowTexes = FACE_COLORS.map(() => buildingGlowTexture(rng));
+    const texes = faceTexes.map((face, i) => ({ face, glow: glowTexes[i] }));
     const roofMat = new THREE.MeshStandardMaterial({ color: 0x11142a, roughness: 0.9 });
     const acMat = new THREE.MeshStandardMaterial({ color: 0x2a3048, roughness: 0.8, metalness: 0.4 });
     const tankMat = new THREE.MeshStandardMaterial({ color: 0x3a2e22, roughness: 0.9 });
@@ -326,7 +360,12 @@ export class City {
         const blockMinZ = -CITY_EXTENT + bz * STREET_STEP + STREET_HALF;
         const blockSize = STREET_STEP - STREET_HALF * 2; // 36
         const roll = rng.next();
-        if (roll < 0.14) continue; // plaza / parking lot
+        if (roll < 0.14) {
+          // v7: plaza / parking lot — record the empty block centre, so the
+          // ground helipad can sit on guaranteed building-free ground
+          this.plazas.push({ x: blockMinX + blockSize / 2, z: blockMinZ + blockSize / 2 });
+          continue;
+        }
         const plots = rng.pick([1, 1, 2, 2, 4]);
         const cols = plots === 4 ? 2 : (plots === 2 ? 2 : 1);
         const rows = plots === 4 ? 2 : 1;
@@ -343,13 +382,19 @@ export class City {
               : rng.range(11, 62) * (rng.chance(0.12) ? 1.7 : 1);
             const x = blockMinX + cx * pw + pw / 2;
             const z = blockMinZ + cz * pd + pd / 2;
-            const tex = rng.pick(texes).clone();
+            const pair = rng.pick(texes);
+            const tex = pair.face.clone();
             tex.needsUpdate = true;
             tex.wrapS = THREE.RepeatWrapping;
             tex.wrapT = THREE.RepeatWrapping;
             tex.repeat.set(Math.max(1, Math.round(w / 12)), Math.max(1, Math.round(h / 12)));
+            const glowTex = pair.glow.clone();
+            glowTex.needsUpdate = true;
+            glowTex.wrapS = THREE.RepeatWrapping;
+            glowTex.wrapT = THREE.RepeatWrapping;
+            glowTex.repeat.copy(tex.repeat);
             const mat = new THREE.MeshStandardMaterial({
-              map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: landmark ? 1.5 : 1.25,
+              map: tex, emissiveMap: glowTex, emissive: 0xffffff, emissiveIntensity: landmark ? 1.5 : 1.25,
               roughness: 0.85, metalness: 0.1,
             });
             // v5: windows dim by day, glow by night
@@ -418,6 +463,58 @@ export class City {
     }
     const cross = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.1, 0.6), markMat);
     cross.position.set(t.x, t.h + 0.85, t.z);
+    this.scene.add(cross);
+  }
+
+  // v7: a ground helipad near the marina (south-west, by the pier road) —
+  // the player helicopter parks here. It sits on the building-free spot
+  // nearest approx x:-120, z:168: pass 1 scans block interiors (off the
+  // streets — empty plazas and skipped-plot gaps), pass 2 falls back to
+  // anywhere clear, so the pad never hides under a tower and the helicopter
+  // can actually land on it. (A first cut picked a street-corner candidate
+  // that a tower overlapped, and the rooftop collision kept shoving the
+  // parked heli into the sky; a second cut took the nearest plaza, which
+  // turned out to be 100 units away on the far side of the city.)
+  // Exposed as city.helipad {x, z}.
+  _buildGroundHelipad() {
+    const TARGET = { x: -120, z: 168 };
+    const streets = this.streetPositions;
+    const onStreet = (x, z) =>
+      streets.some((p) => Math.abs(x - p) < 10) || streets.some((p) => Math.abs(z - p) < 10);
+    const clear = (x, z, m = 8) => !this.buildings.some((b) =>
+      Math.abs(x - b.x) < b.w / 2 + m && Math.abs(z - b.z) < b.d / 2 + m);
+    let spot = null;
+    let bestD = Infinity;
+    const scan = (offStreetOnly) => {
+      for (let gx = -204; gx <= 204; gx += 4) {
+        for (let gz = -204; gz <= 204; gz += 4) {
+          if (offStreetOnly && onStreet(gx, gz)) continue;
+          if (!clear(gx, gz)) continue;
+          const d = Math.hypot(gx - TARGET.x, gz - TARGET.z);
+          if (d < bestD) { bestD = d; spot = { x: gx, z: gz }; }
+        }
+      }
+    };
+    scan(true);
+    if (!spot) { bestD = Infinity; scan(false); }
+    if (!spot) spot = { x: -132, z: 180 };
+    this.helipad = { x: spot.x, z: spot.z };
+    const padMat = new THREE.MeshStandardMaterial({ color: 0x2a3040, roughness: 0.8 });
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 0.25, 28), padMat);
+    pad.position.set(spot.x, 0.13, spot.z);
+    this.scene.add(pad);
+    const markMat = new THREE.MeshBasicMaterial({ color: 0xffd75e });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(5.6, 6.4, 28), markMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(spot.x, 0.28, spot.z);
+    this.scene.add(ring);
+    for (const sx of [-1.8, 1.8]) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 7), markMat);
+      bar.position.set(spot.x + sx, 0.28, spot.z);
+      this.scene.add(bar);
+    }
+    const cross = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 0.9), markMat);
+    cross.position.set(spot.x, 0.28, spot.z);
     this.scene.add(cross);
   }
 

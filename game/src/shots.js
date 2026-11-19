@@ -1,3 +1,6 @@
+// v7: Sun-Kissed Bay — mission shot is now a STREET RACE at golden hour
+// (race: 1 starts RACE 1 PIER SPRINT at the pier flag), street shot keeps
+// bright noon to show the new day look, under recording 01a1f27b.
 // v6: Golden Hour Kings — shots re-staged: cover + chase at golden hour with
 // roadblock + helicopter, mission = Job 9 at the marina, street = bright day
 // market street, under recording 01a1f269.
@@ -39,15 +42,14 @@ export const SHOT_STAGING = {
     note: 'Five-star police chase at golden hour: helicopter searchlight, roadblock ahead, wanted stars, sirens',
   },
   mission: {
-    mode: 'foot', wanted: 0, mission: 9, tod: 17.5,
-    player: { x: 156, z: 156, heading: Math.PI * 0.75 },
-    car: null,
+    mode: 'car', wanted: 0, mission: 0, tod: 17.5, race: 1,
+    // v7: at the race start line — 16u before checkpoint 1 of RACE 1 PIER
+    // SPRINT, facing it down the pier road, green beacon ahead
+    player: { x: -168, z: -8, heading: Math.PI },
+    car: { x: -168, z: -8, heading: Math.PI },
     trafficNear: 3, policeNear: 0, pedsNear: 2, orbsNear: true,
-    // camera swung 0.55 rad to the side so the marina beacon shows BESIDE the
-    // player instead of hidden behind them; pulled back so the player doesn't
-    // fill the frame
-    camYaw: Math.PI * 0.75 + 0.55, camPitch: 0.12, camDist: 8,
-    note: 'Mission in progress at golden hour: JOB 9 HIGH TIDE at the marina, objective marker, beacon',
+    camYaw: Math.PI, camPitch: 0.2, camDist: 10,
+    note: 'Street race at golden hour: RACE 1 PIER SPRINT from the pier flag, green checkpoint beacon ahead, race panel with timer + par, Vex race card',
   },
   street: {
     mode: 'foot', wanted: 0, mission: 0, tod: 12,

@@ -1,3 +1,4 @@
+<!-- v7: Sun-Kissed Bay — flyable SKYHAWK helicopter, 3 street races, carjacking, sun-soaked day, under recording 01a1f27b. -->
 <!-- v6: Golden Hour Kings — 10 jobs, garage upgrades, weapon wheel, roadblocks, shop + safehouse, golden-hour opening, under recording 01a1f269. -->
 # Neon Bay
 
@@ -5,15 +6,17 @@
 [![rank](https://make.fun/badge/gta6-01/sami30357/neon-bay/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![reward](https://make.fun/badge/gta6-01/sami30357/neon-bay/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
-Neon Bay is a rain-slick open-world crime game set in a neon metropolis — not another sunny island. Drive and walk a wet, glowing city, steal cars, outrun the Bay PD and its searchlight helicopter, and work ten story jobs for fixer Vex Marlowe. The city runs on a real clock — night, dawn, day, golden hour and dusk — and it opens at golden hour, 17:30, the whole skyline on fire. Built for make.fun's [Make GTA 6](https://make.fun/bounty/gta6-01) bounty.
+Neon Bay is a rain-slick open-world crime game set in a neon metropolis — not another sunny island. Drive and walk a wet, glowing city, steal cars, outrun the Bay PD and its searchlight helicopter, and work ten story jobs for fixer Vex Marlowe. The city runs on a real clock — night, dawn, day, golden hour and dusk — and it opens at golden hour, 17:30, the whole skyline on fire. v7 adds a flyable helicopter, three street races, a carjacking animation and a sun-soaked day look: at noon the towers are pale sandstone and blue-grey with dark glass, the sky bright azure, the streets light. Built for make.fun's [Make GTA 6](https://make.fun/bounty/gta6-01) bounty.
 
 ## What is in the game
 
-- **A golden-hour opening**: the game clock starts at 17:30 and runs 1 game-hour per 75 real seconds. Golden hour is the first thing you see — warm low sun, long shadows, neon waking up — then dusk goes purple, night brings the rain and the full neon, dawn breaks pale over the bay and noon turns the streets blue-grey. Sky, fog, lights, sun and moon, rain, window glow and streetlights all follow the hour, and the HUD shows the time and phase. `?tod=<hours>` pins the time for screenshots.
+- **A golden-hour opening**: the game clock starts at 17:30 and runs 1 game-hour per 75 real seconds. Golden hour is the first thing you see — warm low sun, long shadows, neon waking up — then dusk goes purple, night brings the rain and the full neon, dawn breaks pale over the bay and noon turns the streets bright and sun-soaked, towers pale with dark windows under a blue sky. Sky, fog, lights, sun and moon, rain, window glow and streetlights all follow the hour, and the HUD shows the time and phase. `?tod=<hours>` pins the time for screenshots.
 - **A night city**: a seeded street grid of towers with lit windows, landmark towers with helipads and blinking beacons, neon signs (some flicker), billboards, street props, a starry sky with moon and drifting clouds, wet reflective asphalt, rain streaks, ground splashes and puddles.
 - **On foot and by car**: third-person walking with mouse-look, sprint lean and a visible pistol, and arcade driving with handbrake drift, horn and brake lights.
 - **Traffic and pedestrians**: cars cruise the lanes — including yellow cabs and vans — pedestrians stroll the sidewalks with hats and umbrellas and flee when trouble starts.
-- **Steal cars**: walk up to any parked car and press E. Stealing raises your wanted level.
+- **Steal cars**: walk up to any parked car and press E. Stealing raises your wanted level. Stealing a car *in traffic* is a carjacking: the driver gets pulled out, flees on foot, the camera shakes — and the car is yours a beat later.
+- **Flyable helicopter**: the gold-and-white SKYHAWK sits on a ground helipad by the marina. Press E beside it to climb in — W/S thrust, A/D yaw, Space climb, Shift descend, up to ~108 km/h. It slides over rooftops instead of clipping through them; land on the pad (or anywhere low) and press E to step out.
+- **Street races**: three checkpoint races at the checkered flag on the pier — PIER SPRINT (4 rings, par 1:15, $400), NEON LOOP (6 rings, par 2:00, $700), BAY GRAND PRIX (8 rings, par 3:00, $1,000). Press E at the flag when no job is running. Beat the par for the full payout, over par pays half; best times save with your game.
 - **Wanted level and police**: 5 stars of heat. Police cars chase and ram with bright flashing light bars and red/blue road pools; foot cops chase and grab you; at 4 stars a police helicopter joins with a searchlight and rotor thump — and the PD throws a roadblock across the road ahead of you, two stationary police cars, lights flashing. Ram one at speed and it hurts. Lose them to cool down; get busted or wasted and you pay for it.
 - **Missions and story**: ten jobs from Vex — a delivery run, a car theft, a back-alley fight, a blackout run under police heat, a tower finale, a night driving a cab, a five-star coronation run, a dawn getaway stealing the gold Sunrise GT from the marina, a marina run under four-star heat, and a golden-hour finale stealing the Celeste Crown jewel from Meridian Tower under five stars. Each pays cash and unlocks the next.
 - **Garage upgrades**: Garage 9 tunes your ride — Engine (top speed + accel), Armor (damage taken −15% per level) and Handling (sharper steering), 3 levels each, $400 / $800 / $1,400. Press G at the garage. Garage 9 is also your safehouse: press E there to save and heal to full.
@@ -27,7 +30,7 @@ Neon Bay is a rain-slick open-world crime game set in a neon metropolis — not 
 
 ## Controls
 
-- **W A S D** move / drive · **Mouse** look · **Shift** sprint · **E** enter / steal car / shop / safehouse · **F** punch · **Click** shoot · **1 2 3** pistol / SMG / shotgun · **Q** cycle weapon · **G** garage upgrades · **Space** handbrake · **R** reset car · **Enter** accept job · **M** mute · **Esc** pause
+- **W A S D** move / drive · **Mouse** look · **Shift** sprint / heli descend · **E** enter / steal car / heli / shop / safehouse / race · **F** punch · **Click** shoot · **1 2 3** pistol / SMG / shotgun · **Q** cycle weapon · **G** garage upgrades · **Space** handbrake / heli climb · **R** reset car · **Enter** accept job · **M** mute · **Esc** pause
 
 ## Run it
 

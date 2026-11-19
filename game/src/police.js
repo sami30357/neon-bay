@@ -1,3 +1,4 @@
+// v7: Sun-Kissed Bay — header touch under recording 01a1f27b (file content unchanged; the player helicopter is a separate gold/white SKYHAWK in heli.js, not the PD chopper here).
 // v6: Golden Hour Kings — roadblocks at 4-5 stars + header, under recording 01a1f269.
 // v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.

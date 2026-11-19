@@ -1,3 +1,4 @@
+// v7: Sun-Kissed Bay — header touch under recording 01a1f27b (file content unchanged; street races are a separate system in races.js).
 // v6: Golden Hour Kings — Jobs 9-10 added (HIGH TIDE, GOLDEN HOUR KINGS finale),
 // ten jobs total, under recording 01a1f269.
 // v5: Golden Hour — Job 8 added, under recording 01a1f255.

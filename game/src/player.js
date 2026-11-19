@@ -1,3 +1,5 @@
+// v7: Sun-Kissed Bay — Rook reads less blocky: shoes, belt, shirt panel,
+// jacket collar, neon-pink cap with brim + sunglasses, under recording 01a1f27b.
 // v6: Golden Hour Kings — shoot() takes a per-weapon cooldown (SMG fires
 // fast, shotgun slow), under recording 01a1f269.
 // v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
@@ -22,10 +24,37 @@ export class Player {
     const hair = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x14101c, roughness: 0.9 }));
     hair.position.y = 2.05;
     this.group.add(hair);
+    // v7: neon-pink cap with a brim over the hair, and shades on the face
+    const capMat = new THREE.MeshStandardMaterial({ color: 0xff2d78, roughness: 0.7 });
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.13, 12), capMat);
+    cap.position.y = 2.2;
+    this.group.add(cap);
+    const brim = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.05, 0.24), capMat);
+    brim.position.set(0, 2.16, 0.32);
+    this.group.add(brim);
+    const shades = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.1, 0.06), new THREE.MeshStandardMaterial({ color: 0x0a0c12, roughness: 0.15, metalness: 0.7 }));
+    shades.position.set(0, 2.03, 0.25);
+    this.group.add(shades);
+    // v7: a lighter shirt panel on the chest front + a jacket collar at the neck
+    const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.72, 0.06), new THREE.MeshStandardMaterial({ color: 0xf2ede4, roughness: 0.85 }));
+    shirt.position.set(0, 1.32, 0.36);
+    this.group.add(shirt);
+    const collar = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.12, 0.42), jacket);
+    collar.position.y = 1.78;
+    this.group.add(collar);
+    // v7: a dark belt at the waist
+    const belt = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.12, 0.86), new THREE.MeshStandardMaterial({ color: 0x14101c, roughness: 0.6 }));
+    belt.position.y = 0.6;
+    this.group.add(belt);
     const legMat = new THREE.MeshStandardMaterial({ color: 0x141828, roughness: 0.9 });
     this.legL = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.62, 0.17), legMat);
     this.legL.position.set(-0.13, 0.31, 0);
     this.group.add(this.legL);
+    // v7: dark shoes, children of the legs so they swing with the walk
+    const shoeMat = new THREE.MeshStandardMaterial({ color: 0x0c0c10, roughness: 0.5 });
+    const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.12, 0.32), shoeMat);
+    shoeL.position.set(0, -0.25, 0.06);
+    this.legL.add(shoeL);
     this.legR = this.legL.clone();
     this.legR.position.x = 0.13;
     this.group.add(this.legR);

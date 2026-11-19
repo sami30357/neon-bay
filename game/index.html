@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- v7: Sun-Kissed Bay — helicopter + street races on the start screen + controls, under recording 01a1f27b. -->
 <!-- v6: Golden Hour Kings — weapon readout, garage + shop panels, 10 jobs on the start screen, under recording 01a1f269. -->
 <html lang="en">
 <head>
@@ -115,20 +116,22 @@
 
 <div id="startScreen" class="screen">
   <h1>NEON <span class="bay">BAY</span></h1>
-  <div class="tag">A RAIN-SLICK OPEN-WORLD CRIME GAME &middot; 10 JOBS &middot; 12 NEON ORBS &middot; A FULL DAY-NIGHT CYCLE &middot; GOLDEN-HOUR OPENING</div>
+  <div class="tag">A RAIN-SLICK OPEN-WORLD CRIME GAME &middot; 10 JOBS &middot; 3 STREET RACES &middot; FLYABLE HELICOPTER &middot; 12 NEON ORBS &middot; A FULL DAY-NIGHT CYCLE &middot; GOLDEN-HOUR OPENING</div>
   <div class="story">Rain on neon. You are <b>Rook</b>, a driver with no past and one fast car-shaped future.
   Fixer <b>Vex Marlowe</b> has ten jobs for you across the wet streets of Neon Bay — steal, deliver,
   fight, outrun the Bay PD and its helicopter. Earn the cash. Don't get caught. The city runs on a
   real clock now: night, dawn, day, golden hour, dusk — and it opens at golden hour, 17:30, the
   whole skyline on fire. Tune your ride at Garage 9, stock up at AMMO-NATION, and mind the
-  roadblocks at four stars and up.</div>
+  roadblocks at four stars and up. The gold <b>SKYHAWK</b> helicopter waits on its helipad by the
+  marina, and the pier crowd runs three street races at the checkered flag — beat the par and the
+  crowd pays.</div>
   <div class="joblist">
     <b>1</b> NEON RUN &middot; <b>2</b> HOT WHEELS &middot; <b>3</b> RAIN CHECK &middot; <b>4</b> BLACKOUT &middot; <b>5</b> THE LAST LIGHT<br>
     <b>6</b> CAB CALL &middot; <b>7</b> KING OF THE BAY &middot; <b>8</b> GOLDEN HOUR &middot; <b>9</b> HIGH TIDE &middot; <b>10</b> GOLDEN HOUR KINGS
   </div>
   <div class="controls">
-    <b>W A S D</b> move / drive &nbsp; <b>Mouse</b> look &nbsp; <b>Shift</b> sprint &nbsp; <b>E</b> enter / steal car / shop / safehouse &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot<br>
-    <b>1 2 3</b> pistol / SMG / shotgun &nbsp; <b>Q</b> cycle weapon &nbsp; <b>G</b> garage upgrades &nbsp; <b>Space</b> handbrake &nbsp; <b>H</b> horn &nbsp; <b>R</b> reset car &nbsp; <b>Enter</b> accept job &nbsp; <b>M</b> mute &nbsp; <b>Esc</b> pause
+    <b>W A S D</b> move / drive &nbsp; <b>Mouse</b> look &nbsp; <b>Shift</b> sprint / heli descend &nbsp; <b>E</b> enter / steal car / heli / shop / safehouse / race &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot<br>
+    <b>Space</b> handbrake / heli climb &nbsp; <b>1 2 3</b> pistol / SMG / shotgun &nbsp; <b>Q</b> cycle weapon &nbsp; <b>G</b> garage upgrades &nbsp; <b>H</b> horn &nbsp; <b>R</b> reset car &nbsp; <b>Enter</b> accept job &nbsp; <b>M</b> mute &nbsp; <b>Esc</b> pause
   </div>
   <div><button class="btn" id="startBtn">START ENGINE</button><button class="btn ghost" id="continueBtn">CONTINUE</button></div>
   <div id="saveNote">Progress saves automatically after every job. Sound starts when you press START.</div>
@@ -139,7 +142,7 @@
   <div class="story">The rain keeps falling. The city waits.</div>
   <div id="jobProgress">Jobs done: 0 / 10</div>
   <div><button class="btn" id="resumeBtn">RESUME</button><button class="btn ghost" id="saveBtn">SAVE GAME</button><button class="btn ghost" id="restartBtn">RESTART NIGHT</button></div>
-  <div class="controls"><b>W A S D</b> move / drive &nbsp; <b>E</b> enter car / shop / safehouse &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot &nbsp; <b>1 2 3</b> weapons &nbsp; <b>G</b> garage &nbsp; <b>Space</b> handbrake &nbsp; <b>H</b> horn &nbsp; <b>M</b> mute</div>
+  <div class="controls"><b>W A S D</b> move / drive &nbsp; <b>E</b> enter car / heli / shop / safehouse / race &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot &nbsp; <b>1 2 3</b> weapons &nbsp; <b>G</b> garage &nbsp; <b>Space</b> handbrake / heli climb &nbsp; <b>H</b> horn &nbsp; <b>M</b> mute</div>
 </div>
 
 <div id="endScreen" class="screen">

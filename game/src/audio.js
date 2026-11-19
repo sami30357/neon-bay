@@ -1,3 +1,4 @@
+// v7: Sun-Kissed Bay — race start fanfare + checkpoint beep, under recording 01a1f27b.
 // v6: Golden Hour Kings — header touch under recording 01a1f269 (file content unchanged).
 // v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
@@ -171,6 +172,10 @@ export class AudioEngine {
   orb() { this._blip(1046, 0.09, 'sine', 0.22); this._blip(1318, 0.09, 'sine', 0.22, 0.07); this._blip(1568, 0.16, 'sine', 0.22, 0.14); }
   fanfare() { this._blip(523, 0.12, 'triangle', 0.22); this._blip(659, 0.12, 'triangle', 0.22, 0.1); this._blip(784, 0.12, 'triangle', 0.22, 0.2); this._blip(1046, 0.22, 'triangle', 0.24, 0.3); }
   horn() { this._blip(370, 0.28, 'square', 0.16); this._blip(466, 0.28, 'square', 0.16); }
+  // v7: street races — a three-note green-light fanfare at the flag, and a
+  // bright two-note beep every time a checkpoint ring is hit
+  raceStart() { this._blip(523, 0.12, 'square', 0.2); this._blip(784, 0.12, 'square', 0.2, 0.1); this._blip(1046, 0.2, 'square', 0.22, 0.2); }
+  raceBeep() { this._blip(1318, 0.09, 'sine', 0.22); this._blip(1760, 0.14, 'sine', 0.22, 0.08); }
   denied() { this._blip(180, 0.16, 'square', 0.18); }
   click() { this._blip(1200, 0.05, 'sine', 0.15); }
   crash() { this._noiseBurst(0.3, 0.5, 500); }

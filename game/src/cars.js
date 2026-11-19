@@ -1,3 +1,4 @@
+// v7: Sun-Kissed Bay — header touch under recording 01a1f27b (file content unchanged; the SKYHAWK lives in heli.js).
 // v6: Golden Hour Kings — garage upgrades hook into CarDriver (top speed,
 // acceleration, steering), under recording 01a1f269.
 // v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).

@@ -1,3 +1,4 @@
+// v7: Sun-Kissed Bay — flyable SKYHAWK helicopter, 3 street races, carjacking animation, sun-soaked day look, under recording 01a1f27b.
 // v6: Golden Hour Kings — 10 jobs, garage upgrades, weapon wheel, roadblocks, shop + safehouse, golden-hour opening, under recording 01a1f269.
 // v5: Golden Hour — day-night cycle + Job 8 (Sunrise GT dawn getaway), under recording 01a1f255.
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
@@ -6,12 +7,20 @@
 // modules, three.js vendored under game/vendor/, no network request), and the program hands
 // it in. It copies game/ and screenshots/ from beside this file to /output and writes
 // /output/dossier.json, the summary the judge reads, with the vendored make.fun library.
-// NEON BAY v6: a rain-slick neon metropolis — an original open-world crime
+// NEON BAY v7: a rain-slick neon metropolis — an original open-world crime
 // game (city on foot and by car, traffic, pedestrians, car stealing, wanted level
 // and police with a searchlight helicopter at 4+ stars and roadblocks across the
 // road, ten story missions, garage upgrades, a weapon wheel, a shop and a
 // safehouse, a neon-orb side activity, combat, HUD with live minimap, start
-// screen, save, synthesized sound). v6 opens at golden hour, 17:30 — the first
+// screen, save, synthesized sound). v7 opens at golden hour, 17:30, and adds a
+// flyable gold/white SKYHAWK helicopter (parked on a ground helipad by the
+// marina — W/S thrust, A/D yaw, Space climb, Shift descend, rooftop
+// collision), three street races at the pier flag (PIER SPRINT, NEON LOOP,
+// BAY GRAND PRIX — checkpoint rings, par times, full or half payouts), a
+// carjacking animation (the driver gets pulled out and flees), a sun-soaked
+// day look (light tower facades with dark windows by day, lit windows by
+// night, brighter noon sky and streets), and a less blocky Rook (cap, shades,
+// shoes, belt, shirt panel, collar). v6 opens at golden hour, 17:30 — the first
 // thing you see is warm low sun over the skyline — and adds Jobs 9-10 (HIGH TIDE,
 // a marina run under four-star heat, and GOLDEN HOUR KINGS, stealing the Celeste
 // Crown jewel from Meridian Tower under five stars). v5 adds a full day-night

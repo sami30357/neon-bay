@@ -1,3 +1,4 @@
+// v7: Sun-Kissed Bay — HELICOPTER gear readout (HOVER / AIRBORNE), under recording 01a1f27b.
 // v6: Golden Hour Kings — weapon readout + garage/shop panels, under recording 01a1f269.
 // v5: Golden Hour — game clock (time + phase) in the radio panel, under recording 01a1f255.
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
@@ -86,6 +87,7 @@ export class HUD {
     if (this.gearEl) {
       this.gearEl.textContent = mode === 'DRIVING'
         ? (v < 1 ? '· PARK' : v < 60 ? '· GEAR 2' : v < 110 ? '· GEAR 3' : '· GEAR 4')
+        : mode === 'HELICOPTER' ? (v < 1 ? '· HOVER' : '· AIRBORNE') // v7: SKYHAWK readout
         : '';
     }
   }

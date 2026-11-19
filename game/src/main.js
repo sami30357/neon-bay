@@ -1,3 +1,5 @@
+// v7: Sun-Kissed Bay — flyable SKYHAWK helicopter, street races, carjacking
+// animation, brighter day look, longer Vex quotes, under recording 01a1f27b.
 // v6: Golden Hour Kings — game opens at golden hour (17:30), garage upgrades,
 // weapon wheel (pistol/SMG/shotgun), AMMO-NATION shop + Garage 9 safehouse,
 // Jobs 9-10, roadblock staging in shots, under recording 01a1f269.
@@ -20,6 +22,8 @@ import { PoliceSystem } from './police.js';
 import { Missions } from './missions.js';
 import { OrbSystem, ORB_VALUE, ORB_COUNT } from './orbs.js';
 import { createCarMesh, CarDriver, makeRngCar } from './cars.js';
+import { createPlayerHeliMesh, HeliDriver } from './heli.js';
+import { RaceSystem, RACES, RACE_FLAG, fmtRaceTime } from './races.js';
 import { makeRng } from './random.js';
 import { readShotParam, SHOT_STAGING } from './shots.js';
 
@@ -92,6 +96,13 @@ export class Game {
     this.inCar = false;
     this.playerCar = null; // CarDriver
     this.playerCarMesh = null;
+    // v7: the SKYHAWK helicopter — parked on the ground helipad by the marina,
+    // always there on load (no save needed for it)
+    this.inHeli = false;
+    this.playerHeli = null; // HeliDriver
+    this.playerHeliMesh = null;
+    // v7: street races at the pier flag
+    this.races = new RaceSystem(this.scene);
     this.parkedCars = []; // {mesh, owned, volt}
     this.enemies = [];
     this.cash = 0;
@@ -132,11 +143,17 @@ export class Game {
     this.ammo = { smg: 0, shells: 0 };
     this._hintedGarage = false;
     this._hintedShop = false;
+    // v7: carjacking — a 0.7s pull-the-driver-out beat before the car is yours
+    this.jackTimer = 0;
+    this.jackPendingCar = null;
+    this.jackPed = null; // {mesh, timer, dirX, dirZ}
 
     this._buildParkedCars();
     this._buildVoltGT();
     this._buildSunriseGT(); // v5: Job 8's car, parked at the marina
     this._buildGarageAndShop(); // v6: Garage 9 + AMMO-NATION signs and rings
+    this._buildPlayerHeli(); // v7: the SKYHAWK on its ground helipad
+    this._buildRaceFlag(); // v7: STREET RACES sign at the pier flag
     this._buildTracer();
     this._wireUI();
     this.input.onKey = (code) => this._onKey(code);
@@ -216,6 +233,41 @@ export class Game {
     ring(SHOP_SPOT.x, SHOP_SPOT.z, 0x00e5ff);
     this._makeSign('GARAGE 9', 'SAFEHOUSE · G UPGRADES', 0xffd75e, GARAGE_SPOT.x, GARAGE_SPOT.z);
     this._makeSign('AMMO-NATION', 'HEALTH · AMMO — PRESS E', 0x00e5ff, SHOP_SPOT.x, SHOP_SPOT.z);
+  }
+
+  // v7: the SKYHAWK — gold/white player helicopter, parked on the ground
+  // helipad the city built near the marina. Always parked there on load.
+  _buildPlayerHeli() {
+    this.playerHeliMesh = createPlayerHeliMesh();
+    this.scene.add(this.playerHeliMesh);
+    this.playerHeli = new HeliDriver(this.playerHeliMesh, this.city.helipad);
+  }
+
+  // v7: the STREET RACES board at the checkered flag on the pier
+  _buildRaceFlag() {
+    this._makeSign('STREET RACES', 'PRESS E — 3 RACES', 0x39ff88, RACE_FLAG.x, RACE_FLAG.z);
+  }
+
+  _enterHeli() {
+    this.inHeli = true;
+    this.player.group.visible = false;
+    this.hud.setCrosshair(false);
+    this.audio.updateRotor(true);
+    this.hud.feed('SKYHAWK in the air — W/S thrust, A/D yaw, SPACE climb, SHIFT descend.');
+  }
+
+  _exitHeli() {
+    if (!this.inHeli) return;
+    const p = this.playerHeliMesh.position;
+    this.player.group.position.set(p.x + 3, 0, p.z + 3);
+    this.player.group.visible = true;
+    this.player.yaw = this.playerHeli.heading;
+    this.player.camYaw = this.playerHeli.heading;
+    this.playerHeli.speed = 0;
+    this.playerHeli.vy = 0;
+    this.inHeli = false;
+    this.audio.updateRotor(this.police.heliActive);
+    this.hud.feed('On foot. The SKYHAWK waits where you left it.');
   }
 
   // a lit sign board on two posts: canvas texture, double-sided
@@ -354,13 +406,26 @@ export class Game {
   }
 
   // Vex's intro line, shortened for the mission card (her "Vex: " prefix is
-  // already on the card as VEX MARLOWE)
+  // already on the card as VEX MARLOWE) — v7: cap raised to 200 chars so her
+  // longer lines wrap instead of cutting off mid-sentence
   _vexQuote(intro) {
     const q = (intro || '').replace(/^Vex: /, '');
-    return q.length > 85 ? `${q.slice(0, 85).trimEnd()}…` : q;
+    return q.length > 200 ? `${q.slice(0, 200).trimEnd()}…` : q;
   }
 
   _refreshMissionPanel() {
+    // v7: a live race owns the mission panel while it runs — the race clock
+    // and next checkpoint are what the player needs to see
+    if (this.races.active) {
+      const a = this.races.active;
+      this.hud.setMission(
+        `RACE ${a.index + 1}/3 — ${a.def.name}`,
+        `CHECKPOINT ${a.checkpointIndex + 1}/${a.def.checkpoints.length} · TIME ${fmtRaceTime(a.timer)} / PAR ${fmtRaceTime(a.def.par)}`,
+        `RACES WON: ${this.races.racesDone.length}/3`,
+        a.checkpointIndex + 1 < a.def.checkpoints.length ? 'NEXT: drive through the green ring' : 'NEXT: finish the race!',
+      );
+      return;
+    }
     if (!this.missions.active) return;
     const step = this.missions.currentStep();
     const { stage, next } = this._missionPanel();
@@ -370,7 +435,7 @@ export class Game {
   // Bay PD response list: helicopter first, then the roadblock (the two
   // things the player most needs to see), then the nearest units
   _refreshPoliceList() {
-    const pp = this.inCar ? this.playerCarMesh.position : this.player.position;
+    const pp = this.inHeli ? this.playerHeliMesh.position : this.inCar ? this.playerCarMesh.position : this.player.position;
     const units = [];
     this.police.cars.forEach((car, i) => {
       const d = Math.round(Math.hypot(car.mesh.position.x - pp.x, car.mesh.position.z - pp.z));
@@ -412,6 +477,8 @@ export class Game {
         upgrades: this.upgrades,
         weapon: this.weapon,
         ammo: this.ammo,
+        // v7: street-race progress persists with the save
+        races: this.races.serialize(),
       }));
     } catch { /* storage unavailable */ }
   }
@@ -432,6 +499,8 @@ export class Game {
       if (this.saveData.upgrades) this.upgrades = { ...this.upgrades, ...this.saveData.upgrades };
       if (this.saveData.weapon && WEAPONS[this.saveData.weapon]) this.weapon = this.saveData.weapon;
       if (this.saveData.ammo) this.ammo = { ...this.ammo, ...this.saveData.ammo };
+      // v7: restore street-race progress from the save
+      if (this.saveData.races) this.races.restore(this.saveData.races);
       this._refreshWeaponHud();
       this.player.reset(this.saveData.pos?.x ?? 0, this.saveData.pos?.z ?? 24);
       this.hud.feed('Save loaded. Welcome back to Neon Bay.');
@@ -458,10 +527,14 @@ export class Game {
     this.upgrades = { engine: 0, armor: 0, handling: 0 };
     this.weapon = 'pistol';
     this.ammo = { smg: 0, shells: 0 };
+    // v7: a fresh night resets the street races too
+    this.races.reset();
+    this.playerHeli.park();
     this._refreshWeaponHud();
     this.player.reset(0, 24);
     this.police.clearWanted();
     this._exitCar(false);
+    if (this.inHeli) this._exitHeli(); // v7: step out of the SKYHAWK too
     document.getElementById('pauseScreen').style.display = 'none';
     document.getElementById('startScreen').style.display = 'flex';
     this.state = 'menu';
@@ -473,6 +546,7 @@ export class Game {
     document.getElementById('endScreen').style.display = 'none';
     const station = this.state === 'ended-busted' ? { x: -168, z: 168 } : { x: 168, z: 168 };
     this._exitCar(false);
+    if (this.inHeli) this._exitHeli(); // v7: step out of the SKYHAWK too
     this.player.reset(station.x, station.z);
     this.police.clearWanted();
     this.state = 'playing';
@@ -562,9 +636,17 @@ export class Game {
     this._save();
   }
 
-  // E on foot: shop first, then safehouse, then car. (In a car, E exits.)
+  // E on foot: shop first, then safehouse, then race flag, then helicopter,
+  // then car. (In a car, E exits; in the helicopter, E lands-and-exits.)
   _interact() {
+    // v7: in the SKYHAWK, E steps out — only once it is low enough to land
+    if (this.inHeli) {
+      if (this.playerHeli.y <= 6) this._exitHeli();
+      else this.hud.feed('Land first — descend with Shift to exit.');
+      return;
+    }
     if (this.inCar) { this._exitCar(true); return; }
+    if (this.jackTimer > 0) return; // v7: mid-carjack, hands busy
     const px = this.player.position.x, pz = this.player.position.z;
     if (Math.hypot(px - SHOP_SPOT.x, pz - SHOP_SPOT.z) < 7) {
       this.hud.showShop();
@@ -578,6 +660,22 @@ export class Game {
       this._save();
       this.audio.fanfare();
       this.hud.feed('Safehouse: game saved, health restored to full.');
+      return;
+    }
+    // v7: the checkered flag on the pier starts the next street race — but
+    // only with no job running and no race already on
+    if (Math.hypot(px - RACE_FLAG.x, pz - RACE_FLAG.z) < 7 && !this.missions.active && !this.races.active) {
+      const idx = this.races.nextRaceIndex();
+      const def = this.races.startRace(idx);
+      this.audio.raceStart();
+      this._refreshMissionPanel();
+      this.hud.showMissionCard(`RACE ${def.id}`, `${def.name} — $${def.reward} · PAR ${fmtRaceTime(def.par)}`, 30000, this._vexQuote(def.intro));
+      this.hud.feed(`Race started: ${def.name} — ${def.checkpoints.length} checkpoints, par ${fmtRaceTime(def.par)}. Follow the green rings!`);
+      return;
+    }
+    // v7: step up to the parked SKYHAWK and climb in
+    if (Math.hypot(px - this.playerHeli.x, pz - this.playerHeli.z) < 5) {
+      this._enterHeli();
       return;
     }
     this._toggleCar();
@@ -840,8 +938,51 @@ export class Game {
       if (idx >= 0) this.traffic.cars.splice(idx, 1);
       best = { mesh: best.mesh, owned: false, volt: false };
       this.parkedCars.push(best);
+      // v7: stealing a TRAFFIC car is a carjacking — the driver gets pulled
+      // out and flees, and the car is yours a beat later. Parked cars
+      // (Volt GT, Sunrise GT, curbside cars) stay instant, so the mission
+      // steal steps never break.
+      this._startJack(best);
+      return;
     }
     this._enterCar(best);
+  }
+
+  // v7: carjacking — yank the driver out of the driver's seat, he runs, the
+  // camera shakes, and the car is yours 0.7s later
+  _startJack(car) {
+    const mesh = car.mesh;
+    const h = mesh.rotation.y;
+    // driver side of the car (same side the player steps out of)
+    const sx = Math.cos(h), sz = -Math.sin(h);
+    const px = this.player.position.x, pz = this.player.position.z;
+    const group = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff8a5c, roughness: 0.8 });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.4, 1.15, 8), bodyMat);
+    body.position.y = 1.15;
+    group.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), new THREE.MeshStandardMaterial({ color: 0xd9a986, roughness: 0.7 }));
+    head.position.y = 1.95;
+    group.add(head);
+    const legMat = new THREE.MeshStandardMaterial({ color: 0x1a1e2e, roughness: 0.9 });
+    for (const lx of [-0.12, 0.12]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.6, 0.16), legMat);
+      leg.position.set(lx, 0.3, 0);
+      group.add(leg);
+    }
+    group.position.set(mesh.position.x + sx * 1.6, 0, mesh.position.z + sz * 1.6);
+    this.scene.add(group);
+    // flee direction: away from the player
+    let dx = group.position.x - px, dz = group.position.z - pz;
+    const len = Math.hypot(dx, dz) || 1;
+    dx /= len; dz /= len;
+    this.jackPed = { mesh: group, timer: 4, dirX: dx, dirZ: dz };
+    this.audio.punch();
+    this.shake = 0.5;
+    this.hud.feed('CARJACKED! Driver pulled out.');
+    // (the wanted star + "Car stolen!" feed come from _enterCar 0.7s later)
+    this.jackPendingCar = car;
+    this.jackTimer = 0.7;
   }
 
   _enterCar(car) {
@@ -898,6 +1039,29 @@ export class Game {
   }
 
   // ---------- mission events ----------
+  // v7: street-race events — checkpoint beeps, finish payouts (full under
+  // par, half over), best-time tracking in the save
+  _handleRaceEvent(ev) {
+    if (!ev) return;
+    if (ev.type === 'checkpoint') {
+      this.audio.raceBeep();
+      this.hud.feed(`Checkpoint ${ev.checkpoint + 1}/${ev.total}!`);
+      this._refreshMissionPanel();
+    } else if (ev.type === 'raceComplete') {
+      this.cash += ev.reward;
+      this.hud.setCash(this.cash);
+      this.hud.setMission('FREE ROAM', 'Race done. The pier crowd is already talking about the next one.');
+      this.hud.setJob('FREE ROAM');
+      this.hud.feed(ev.underPar
+        ? `RACE WON — ${ev.race.name} in ${fmtRaceTime(ev.time)} (par ${fmtRaceTime(ev.race.par)})! +$${ev.reward}`
+        : `Race finished in ${fmtRaceTime(ev.time)} — over par, half payout +$${ev.reward}`);
+      this.hud.showMissionCard('RACE COMPLETE', `+$${ev.reward} — ${ev.race.name} · ${fmtRaceTime(ev.time)}${ev.underPar ? ' · UNDER PAR' : ''}`);
+      if (ev.underPar) this.audio.fanfare(); else this.audio.cash();
+      this._updateRespect();
+      this._save();
+    }
+  }
+
   _handleMissionEvent(ev) {
     if (!ev) return;
     if (ev.type === 'stepComplete') {
@@ -1015,6 +1179,32 @@ export class Game {
       this.player.camYaw = s.camYaw;
       this.player.camPitch = s.camPitch;
     }
+    // v7: race staging — start race N, then park the staged car 16u before
+    // the first checkpoint facing it, so the green beacon reads in frame.
+    // The car sits still (speed 0): it is at the start line, the race clock
+    // has just begun, and the panel shows CHECKPOINT 1/N.
+    if (s.race) {
+      const def = this.races.startRace(s.race - 1);
+      if (def) {
+        const cp = this.races.currentTarget();
+        const dx = cp.x - RACE_FLAG.x, dz = cp.z - RACE_FLAG.z;
+        const len = Math.hypot(dx, dz) || 1;
+        const px = cp.x - (dx / len) * 16, pz = cp.z - (dz / len) * 16;
+        const heading = Math.atan2(dx, dz);
+        if (this.inCar && this.playerCarMesh) {
+          this.playerCarMesh.position.set(px, 0, pz);
+          this.playerCar.heading = heading;
+          this.playerCarMesh.rotation.y = heading;
+          this.playerCar.speed = 0;
+        } else {
+          this.player.group.position.set(px, 0, pz);
+          this.player.yaw = heading;
+          this.player.camYaw = heading;
+        }
+        this._refreshMissionPanel();
+        this.hud.showMissionCard(`RACE ${def.id}`, `${def.name} — $${def.reward} · PAR ${fmtRaceTime(def.par)}`, 30000, this._vexQuote(def.intro));
+      }
+    }
     // pull a few traffic cars into frame, placed on the same street ahead/behind
     const near = this.traffic.cars.slice(0, s.trafficNear);
     const streetX = s.player.x;
@@ -1104,7 +1294,18 @@ export class Game {
       this.city.update(dt, this.time, this.player.position);
     }
     // camera
-    if (this.inCar && this.playerCarMesh) {
+    // v7: helicopter chase cam — behind and above the SKYHAWK
+    if (this.inHeli && this.playerHeliMesh) {
+      const p = this.playerHeliMesh.position;
+      const h = this.playerHeli.heading;
+      const tx = p.x - Math.sin(h) * 14, tz = p.z - Math.cos(h) * 14;
+      this.camPos.x += (tx - this.camPos.x) * Math.min(1, dt * 5);
+      this.camPos.y += ((p.y + 7) - this.camPos.y) * Math.min(1, dt * 5);
+      this.camPos.z += (tz - this.camPos.z) * Math.min(1, dt * 5);
+      this.camLook.lerp(new THREE.Vector3(p.x + Math.sin(h) * 6, p.y + 1, p.z + Math.cos(h) * 6), Math.min(1, dt * 8));
+      this.camera.position.copy(this.camPos);
+      this.camera.lookAt(this.camLook);
+    } else if (this.inCar && this.playerCarMesh) {
       const p = this.playerCarMesh.position;
       const h = this.playerCar.heading;
       const back = 11.5, up = 4.6;
@@ -1140,7 +1341,7 @@ export class Game {
   }
 
   _updateWorld(dt) {
-    const pp = this.inCar ? this.playerCarMesh.position : this.player.position;
+    const pp = this.inHeli ? this.playerHeliMesh.position : this.inCar ? this.playerCarMesh.position : this.player.position;
     // v6: the game clock runs 1 game-hour per 75 real seconds; the city and
     // the HUD clock follow it, and the exposure lifts a touch by day
     if (!this.clockFrozen) this.timeOfDay = (this.timeOfDay + dt / 75) % 24;
@@ -1148,8 +1349,42 @@ export class Game {
     this.hud.setClock(this.timeOfDay);
     // v6: exposure lifts a touch by day so noon reads bright, not dusk
     this.renderer.toneMappingExposure = 1.25 + 0.1 * this.city.dayFactor;
+    // v7: the carjack beat — 0.7s after the pull, the car is yours
+    if (this.jackTimer > 0) {
+      this.jackTimer -= dt;
+      if (this.jackTimer <= 0) {
+        this.jackTimer = 0; // clamp: a fired beat reads 0, never negative
+        if (this.jackPendingCar) {
+          const c = this.jackPendingCar;
+          this.jackPendingCar = null;
+          this._enterCar(c);
+        }
+      }
+    }
+    // v7: the pulled driver sprints away from the player, then disappears
+    if (this.jackPed) {
+      this.jackPed.timer -= dt;
+      const jp = this.jackPed;
+      jp.mesh.position.x += jp.dirX * 5.5 * dt;
+      jp.mesh.position.z += jp.dirZ * 5.5 * dt;
+      jp.mesh.rotation.y = Math.atan2(jp.dirX, jp.dirZ);
+      const fixed = this.city.resolveCircle(jp.mesh.position.x, jp.mesh.position.z, 0.5);
+      jp.mesh.position.x = fixed.x;
+      jp.mesh.position.z = fixed.z;
+      if (jp.timer <= 0) {
+        this.scene.remove(jp.mesh);
+        this.jackPed = null;
+      }
+    }
     // player / car
-    if (this.inCar && this.playerCar) {
+    if (this.inHeli && this.playerHeli) {
+      // v7: helicopter flight — car and on-foot updates are skipped, the
+      // world (traffic, police, missions) keeps running below
+      this.playerHeli.update(dt, this.input, this.city);
+      this.audio.setEngine(0, false);
+      this.hud.setSpeed(this.playerHeli.speed * 3.6, 'HELICOPTER');
+      this.hud.setCrosshair(false);
+    } else if (this.inCar && this.playerCar) {
       const res = this.playerCar.update(dt, this.input, this.city);
       this.traffic.collidePlayerCar(this.playerCarMesh.position.x, this.playerCarMesh.position.z, 1.6);
       // hit pedestrians while driving
@@ -1196,10 +1431,11 @@ export class Game {
     // world systems
     this.traffic.update(dt, pp, this.inCar ? this.playerCar.speed : 0, this.time);
     // v6: the PD gets the player's heading so the roadblock lands on their road
-    const pol = this.police.update(dt, pp, this.inCar, this.inCar ? this.playerCar.speed : 0, this.inCar ? this.playerCar.heading : this.player.yaw);
+    // v7: flying counts as "in a vehicle" — foot cops cannot grab you out of the sky
+    const pol = this.police.update(dt, pp, this.inCar || this.inHeli, this.inCar ? this.playerCar.speed : 0, this.inCar ? this.playerCar.heading : this.player.yaw);
     if (pol.busted) { this._busted(); return; }
     this.audio.updateSiren(dt, this.police.nearby);
-    this.audio.updateRotor(this.police.heliActive);
+    this.audio.updateRotor(this.police.heliActive || this.inHeli); // v7: the SKYHAWK's rotor too
     this.audio.updateMusic(dt);
     // radio rotates to the next song every 45 seconds of game time
     this.radioTimer += dt;
@@ -1263,6 +1499,9 @@ export class Game {
     // missions
     const ev = this.missions.update(dt, pp, this.inCar, this.police.wanted);
     if (ev) this._handleMissionEvent(ev);
+    // v7: street races — checkpoints and payouts, driven by the player position
+    const raceEv = this.races.update(dt, pp);
+    if (raceEv) this._handleRaceEvent(raceEv);
     // rain, beacons, flicker, clouds and splashes follow the player
     this.city.update(dt, this.time, pp);
     // HUD
@@ -1277,14 +1516,17 @@ export class Game {
                ...this.police.roadblock.map((c) => ({ x: c.mesh.position.x, z: c.mesh.position.z }))],
       heli: this.police.heliPosition,
       orbs: this.orbs.remaining().map((o) => ({ x: o.x, z: o.z })),
-      player: { x: pp.x, z: pp.z, heading: this.inCar ? this.playerCar.heading : this.player.yaw },
-      missionTarget: this.missions.currentTarget(),
+      player: { x: pp.x, z: pp.z, heading: this.inHeli ? this.playerHeli.heading : this.inCar ? this.playerCar.heading : this.player.yaw },
+      // v7: the race checkpoint shows on the minimap when no mission target is live
+      missionTarget: this.missions.currentTarget() || this.races.currentTarget(),
     });
     // mission step text refresh
     const step = this.missions.currentStep();
     if (step && this.missions.active) {
       this._refreshMissionPanel();
     }
+    // v7: the race clock ticks every frame while a race runs
+    if (this.races.active) this._refreshMissionPanel();
   }
 
   _busted() {
