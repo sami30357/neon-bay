@@ -1,3 +1,4 @@
+// v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Keyboard and mouse input for Neon Bay. Keys are tracked by code so the layout
 // never depends on the player's keyboard language. Mouse look uses pointer lock.

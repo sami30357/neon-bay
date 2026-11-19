@@ -1,3 +1,4 @@
+// v5: Golden Hour — game clock (time + phase) in the radio panel, under recording 01a1f255.
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // HUD for Neon Bay: cash, health, wanted stars, mission banner, message feed,
 // dialogue box, and a live 2D minimap drawn on a canvas (streets, buildings,
@@ -9,7 +10,7 @@
 // panel with stage progress and NEXT step, a Bay PD response list with named units
 // and distances, a respect meter, and a canvas-drawn portrait of fixer Vex Marlowe
 // in the dialogue box.
-import { CITY_EXTENT, STREET_STEP } from './city.js';
+import { CITY_EXTENT, STREET_STEP, phaseNameFor } from './city.js';
 
 export class HUD {
   constructor() {
@@ -37,6 +38,7 @@ export class HUD {
     this.cardQuoteEl = document.getElementById('missionCardQuote');
     this.vignetteEl = document.getElementById('damageVignette');
     this.radioSongEl = document.getElementById('radioSong');
+    this.clockEl = document.getElementById('clockLine'); // v5: game clock
     this.policeListEl = document.getElementById('policeList');
     this.respectBarEl = document.getElementById('respectBar');
     this.respectPctEl = document.getElementById('respectPct');
@@ -80,6 +82,14 @@ export class HUD {
   }
   setCrosshair(on) { this.crosshairEl.style.display = on ? 'block' : 'none'; }
   setRadio(song) { if (this.radioSongEl) this.radioSongEl.textContent = song; }
+  // v5: game clock — "17:30 · GOLDEN HOUR", from the game hour in [0, 24)
+  setClock(t) {
+    if (!this.clockEl) return;
+    const h = ((t % 24) + 24) % 24;
+    const hh = Math.floor(h);
+    const mm = Math.floor((h - hh) * 60);
+    this.clockEl.textContent = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} · ${phaseNameFor(h)}`;
+  }
   setRespect(pct) {
     const p = Math.max(0, Math.min(100, Math.round(pct)));
     if (this.respectBarEl) this.respectBarEl.style.width = `${p}%`;

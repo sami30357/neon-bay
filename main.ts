@@ -1,14 +1,19 @@
+// v5: Golden Hour — day-night cycle + Job 8 (Sunrise GT dawn getaway), under recording 01a1f255.
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // A working gta6-01 entry (Node 22, standard library only): the game is this directory's
 // game/ folder, plain static files a desktop browser loads offline (game/index.html and its ES
 // modules, three.js vendored under game/vendor/, no network request), and the program hands
 // it in. It copies game/ and screenshots/ from beside this file to /output and writes
 // /output/dossier.json, the summary the judge reads, with the vendored make.fun library.
-// NEON BAY v2: a rain-slick neon metropolis at night — an original open-world crime
+// NEON BAY v5: a rain-slick neon metropolis at night — an original open-world crime
 // game (city on foot and by car, traffic, pedestrians, car stealing, wanted level
-// and police with a searchlight helicopter at 4+ stars, seven story missions, a
+// and police with a searchlight helicopter at 4+ stars, eight story missions, a
 // neon-orb side activity, combat, HUD with live minimap, start screen, save,
-// synthesized sound). v2 makes the city richer: landmark towers with helipads and
+// synthesized sound). v5 adds a full day-night cycle — the city runs on a game
+// clock (1 game-hour per 75 real seconds, starting 21:00) through night, dawn,
+// day, golden hour and dusk, with the sky, fog, lights, stars, sun and moon,
+// rain and neon all shifting with the hour — plus Job 8 GOLDEN HOUR, a dawn
+// getaway stealing the gold Sunrise GT from the marina. v2 makes the city richer: landmark towers with helipads and
 // blinking beacons, twice the neon signs (some flicker), street props, a starry sky
 // with moon and drifting clouds, rain streaks with ground splashes, puddles, taxi
 // and van traffic, umbrellas in the rain, mission intro cards, crash smoke and

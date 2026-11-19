@@ -1,3 +1,4 @@
+// v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Seeded random numbers for Neon Bay: the city layout is deterministic, so every
 // run (and every screenshot) shows the same streets, buildings and neon signs.

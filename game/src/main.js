@@ -1,3 +1,5 @@
+// v5: Golden Hour — game clock (1 game-hour per 75 real seconds, ?tod= override),
+// Sunrise GT + Job 8 car, 8 jobs, under recording 01a1f255.
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Neon Bay — the game itself: boot, loop, driving and on-foot play, car stealing,
 // combat, wanted heat, missions, saves, and deterministic screenshot staging.
@@ -20,6 +22,7 @@ import { readShotParam, SHOT_STAGING } from './shots.js';
 
 const SAVE_KEY = 'neonbay-save-v1';
 const VOLT_SPOT = { x: 168, z: -120 };
+const SUNRISE_SPOT = { x: 168, z: 168 }; // v5: the marina, home of the Sunrise GT
 // WAVE 88.1 — Neon Bay's own radio: fictional stations and songs, rotated in-game
 const RADIO_SONGS = [
   'Neon Drive — Midnight Mirage',
@@ -81,6 +84,18 @@ export class Game {
     this.shot = readShotParam();
     this.shotMode = null;
     this.time = 0;
+    // v5: game clock — the night opens at 21:00 and runs 1 game-hour per 75
+    // real seconds. ?tod=<hours> pins the time (and freezes it) so screenshots
+    // are deterministic.
+    this.timeOfDay = 21;
+    this.clockFrozen = false;
+    const todParam = new URLSearchParams(window.location.search).get('tod');
+    if (todParam !== null) {
+      const t = Number(todParam);
+      if (Number.isFinite(t) && t >= 0 && t < 24) { this.timeOfDay = t; this.clockFrozen = true; }
+    }
+    this.city.setTimeOfDay(this.timeOfDay);
+    this.hud.setClock(this.timeOfDay);
     this.lastShotCrime = -10;
     this.camPos = new THREE.Vector3(0, 30, 60);
     this.camLook = new THREE.Vector3(0, 1.5, 0);
@@ -94,6 +109,7 @@ export class Game {
 
     this._buildParkedCars();
     this._buildVoltGT();
+    this._buildSunriseGT(); // v5: Job 8's car, parked at the marina
     this._buildTracer();
     this._wireUI();
     this.input.onKey = (code) => this._onKey(code);
@@ -135,6 +151,25 @@ export class Game {
     ring.visible = false;
     this.scene.add(ring);
     this.voltRing = ring;
+  }
+
+  // v5: the Sunrise GT — gold on gold, parked at the marina for Job 8
+  _buildSunriseGT() {
+    const mesh = createCarMesh({ color: 0xffd75e, underglow: 0xffae00, sport: true });
+    mesh.position.set(SUNRISE_SPOT.x, 0, SUNRISE_SPOT.z);
+    mesh.rotation.y = -Math.PI * 0.4;
+    this.scene.add(mesh);
+    this.sunriseGT = { mesh, owned: false, volt: false, sunrise: true };
+    this.parkedCars.push(this.sunriseGT);
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(3, 3.8, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffd75e, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(SUNRISE_SPOT.x, 0.06, SUNRISE_SPOT.z);
+    ring.visible = false;
+    this.scene.add(ring);
+    this.sunriseRing = ring;
   }
 
   _buildTracer() {
@@ -206,12 +241,12 @@ export class Game {
 
   _updateJobProgress() {
     const el = document.getElementById('jobProgress');
-    if (el) el.textContent = `Jobs done: ${this.missions.completed} / 7`;
+    if (el) el.textContent = `Jobs done: ${this.missions.completed} / 8`;
   }
 
   // respect: 70% from jobs done, 30% from orbs collected
   _respect() {
-    return Math.round((this.missions.completed / 7) * 70 + (this.orbs.collected / ORB_COUNT) * 30);
+    return Math.round((this.missions.completed / 8) * 70 + (this.orbs.collected / ORB_COUNT) * 30);
   }
 
   _updateRespect() {
@@ -309,6 +344,7 @@ export class Game {
     this.hud.setHealth(this.player.health);
     this.hud.setOrbs(this.orbs.collected, ORB_COUNT);
     this.hud.setRadio(RADIO_SONGS[this.radioIndex]);
+    this.hud.setClock(this.timeOfDay);
     this._updateRespect();
     this._updateJobProgress();
     this._offerMission();
@@ -344,7 +380,7 @@ export class Game {
   // ---------- missions ----------
   _offerMission() {
     if (this.missions.done) {
-      this._say('VEX', 'You did it, Rook. Seven jobs, one legend. Neon Bay is yours now — free roam, keep the cash coming.');
+      this._say('VEX', 'You did it, Rook. Eight jobs, one legend. Neon Bay is yours now — free roam, keep the cash coming.');
       return;
     }
     const def = this.missions.currentDef;
@@ -600,9 +636,9 @@ export class Game {
     if (!car.owned) {
       car.owned = true;
       this.police.addCrime(1);
-      this.hud.feed(car.volt ? 'You stole the Volt GT!' : 'Car stolen! The PD is on you.');
+      this.hud.feed(car.volt ? 'You stole the Volt GT!' : car.sunrise ? 'You stole the Sunrise GT!' : 'Car stolen! The PD is on you.');
       this.audio.cash();
-      const ev = this.missions.onCarStolen(car.volt ? 'volt' : 'any');
+      const ev = this.missions.onCarStolen(car.volt ? 'volt' : car.sunrise ? 'sunrise' : 'any');
       if (ev) this._handleMissionEvent(ev);
     } else {
       this.hud.feed('Back in your car.');
@@ -628,6 +664,8 @@ export class Game {
   _updateVoltRing() {
     const step = this.missions.currentStep();
     this.voltRing.visible = !!(step && step.kind === 'steal' && step.car === 'volt');
+    // v5: the gold ring marks the Sunrise GT while Job 8's steal step is live
+    this.sunriseRing.visible = !!(step && step.kind === 'steal' && step.car === 'sunrise');
   }
 
   // ---------- mission events ----------
@@ -661,6 +699,14 @@ export class Game {
     const s = SHOT_STAGING[name];
     if (!s) return;
     this.shotMode = s.mode;
+    // v5: staged shots pin the time of day (golden hour cover, dusk chase,
+    // dawn mission, night street) and freeze the clock so the light is exact
+    if (s.tod !== undefined && s.tod !== null) {
+      this.timeOfDay = s.tod;
+      this.clockFrozen = true;
+      this.city.setTimeOfDay(s.tod);
+      this.hud.setClock(s.tod);
+    }
     document.getElementById('startScreen').style.display = 'none';
     this.hud.show();
     this.state = 'playing';
@@ -863,6 +909,12 @@ export class Game {
 
   _updateWorld(dt) {
     const pp = this.inCar ? this.playerCarMesh.position : this.player.position;
+    // v5: the game clock runs 1 game-hour per 75 real seconds; the city and
+    // the HUD clock follow it, and the exposure eases off a touch by day
+    if (!this.clockFrozen) this.timeOfDay = (this.timeOfDay + dt / 75) % 24;
+    this.city.setTimeOfDay(this.timeOfDay);
+    this.hud.setClock(this.timeOfDay);
+    this.renderer.toneMappingExposure = 1.3 - 0.25 * this.city.dayFactor;
     // player / car
     if (this.inCar && this.playerCar) {
       const res = this.playerCar.update(dt, this.input, this.city);

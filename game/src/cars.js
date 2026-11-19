@@ -1,3 +1,4 @@
+// v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Cars for Neon Bay: a stylized box-built car factory (body, cabin, wheels, neon
 // underglow, headlights and taillights) and arcade driving physics for the player.

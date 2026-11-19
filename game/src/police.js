@@ -1,3 +1,4 @@
+// v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Wanted level and the Bay PD for Neon Bay: crimes raise stars, police cars and
 // foot cops chase the player, and the heat dies down when the player stays clean

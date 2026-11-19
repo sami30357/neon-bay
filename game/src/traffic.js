@@ -1,3 +1,4 @@
+// v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Traffic and pedestrians for Neon Bay: cars cruise the street grid on lanes and
 // pedestrians stroll the sidewalks, fleeing when the player causes trouble.

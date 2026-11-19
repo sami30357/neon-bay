@@ -1,8 +1,10 @@
+// v5: Golden Hour — Job 8 added, under recording 01a1f255.
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
-// Story missions for Neon Bay. Rook works for fixer Vex Marlowe across seven jobs:
-// drive, steal, fight, outrun the law, a tower finale, a night driving a cab, and
-// a five-star coronation run. Each job pays cash and unlocks the next. Objectives
-// show as a 3D beacon, a minimap marker and HUD text.
+// Story missions for Neon Bay. Rook works for fixer Vex Marlowe across eight jobs:
+// drive, steal, fight, outrun the law, a tower finale, a night driving a cab, a
+// five-star coronation run, and a dawn getaway in the Sunrise GT. Each job pays
+// cash and unlocks the next. Objectives show as a 3D beacon, a minimap marker
+// and HUD text.
 import * as THREE from 'three';
 import { makeRng } from './random.js';
 
@@ -81,12 +83,21 @@ export const MISSIONS = [
       { text: 'Lose the cops AND the helicopter — wanted level to zero', target: null, radius: 0, kind: 'escape' },
     ],
   },
+  {
+    id: 8, title: 'GOLDEN HOUR',
+    intro: 'Vex: Dawn job, Rook. A Sunrise GT — gold on gold — sits at the marina, and the whole city will be watching the sky. Steal it before the sun is up and bring it to me at the pier. $1,500, and the sunrise is yours.',
+    reward: 1500,
+    steps: [
+      { text: 'Steal the Sunrise GT from the marina', target: { x: 168, z: 168 }, radius: 5, kind: 'steal', car: 'sunrise' },
+      { text: 'Deliver the Sunrise GT to Vex at the pier', target: { x: -168, z: 168 }, radius: 6, kind: 'deliver' },
+    ],
+  },
 ];
 
 export class Missions {
   constructor(scene) {
     this.scene = scene;
-    this.completed = 0; // index of next mission (0..7)
+    this.completed = 0; // index of next mission (0..8)
     this.active = null; // {def, stepIndex, fightLeft, ...}
     this.beacon = null;
     this.marker = null;

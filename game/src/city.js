@@ -1,3 +1,4 @@
+// v5: Golden Hour — day-night cycle (setTimeOfDay) + Job 8 support, under recording 01a1f255.
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Neon Bay's rain-slick night city: a street grid, towers with lit windows, neon
 // signs, wet asphalt, streetlights and rain. The layout is seeded, so every run
@@ -6,6 +7,9 @@
 // water towers, twice the neon signs (some flicker), street props, a starry sky
 // with moon and drifting clouds, rain as visible streaks with ground splashes,
 // and puddle glints on the wet roads.
+// v5: the city now runs a full day-night cycle — dawn, day, golden hour, dusk,
+// night — with the sky, fog, lights, stars, sun/moon, rain and neon all
+// interpolating between keyframes. Night stays the city's home turf.
 import * as THREE from 'three';
 import { makeRng, CITY_SEED } from './random.js';
 
@@ -13,6 +17,31 @@ export const STREET_STEP = 48;
 export const STREET_HALF = 6;
 export const CITY_EXTENT = 216; // streets run from -216 to +216
 export const ROAD_Y = 0.02;
+
+// v5: one keyframe per phase of the day. setTimeOfDay(t) lerps between the two
+// neighbours, so the sky, fog, lights, stars, sun/moon, rain and neon all move
+// together instead of snapping. lightPos is where the sun/moon light (and its
+// disc) sits; day is 0 at night, 1 at noon — windows, neon and rain scale off it.
+const TOD_KEYS = [
+  { t: 0,    sky: 0x04050d, fog: 0x070818, fogDensity: 0.0032, hemi: 0x3a3a88, hemiInt: 1.5, amb: 0x223055, ambInt: 0.5, light: 0x8fa8ff, lightInt: 0.6, lightPos: [-120, 180, 80],  stars: 0.85, rain: 1.0,  neon: 1.0,  sun: 0,    moon: 1,   day: 0,    cloud: 0x0d1024, ground: 0x1a2032 },
+  { t: 6,    sky: 0x4a3550, fog: 0x3a2f45, fogDensity: 0.0028, hemi: 0x8a6a9a, hemiInt: 1.7, amb: 0x55405f, ambInt: 0.6, light: 0xffb080, lightInt: 0.55, lightPos: [180, 40, 60],   stars: 0.25, rain: 0.7,  neon: 0.85, sun: 0.25, moon: 0.6, day: 0.15, cloud: 0x4a3f5e, ground: 0x232838 },
+  { t: 9,    sky: 0x87b5d9, fog: 0x9db8cc, fogDensity: 0.0016, hemi: 0xbfd9ff, hemiInt: 2.2, amb: 0x8899bb, ambInt: 0.7, light: 0xfff2c0, lightInt: 1.6, lightPos: [140, 220, 60],  stars: 0,    rain: 0.15, neon: 0.45, sun: 1,    moon: 0,   day: 1,    cloud: 0xcfd8e8, ground: 0x3a4556 },
+  { t: 16,   sky: 0x8fb4d8, fog: 0xa8bccb, fogDensity: 0.0016, hemi: 0xbfd9ff, hemiInt: 2.2, amb: 0x8899bb, ambInt: 0.7, light: 0xffe8b0, lightInt: 1.5, lightPos: [-140, 200, 60], stars: 0,    rain: 0.15, neon: 0.45, sun: 1,    moon: 0,   day: 1,    cloud: 0xd8dce8, ground: 0x3a4556 },
+  { t: 17.5, sky: 0xe8853d, fog: 0xd88a55, fogDensity: 0.0022, hemi: 0xffb080, hemiInt: 2.0, amb: 0xcc8855, ambInt: 0.6, light: 0xff8a3d, lightInt: 1.8, lightPos: [-220, 45, 40],  stars: 0.05, rain: 0.25, neon: 0.8,  sun: 1,    moon: 0,   day: 0.55, cloud: 0xe8a06a, ground: 0x33281f },
+  { t: 19,   sky: 0x2a1a4a, fog: 0x241838, fogDensity: 0.0028, hemi: 0x5a4a8a, hemiInt: 1.6, amb: 0x3a2a55, ambInt: 0.55, light: 0xff7a5a, lightInt: 0.7, lightPos: [-200, 25, 60],  stars: 0.4,  rain: 0.6,  neon: 1.0,  sun: 0.15, moon: 0.5, day: 0.1,  cloud: 0x2a2044, ground: 0x1e2233 },
+  { t: 21,   sky: 0x04050d, fog: 0x070818, fogDensity: 0.0032, hemi: 0x3a3a88, hemiInt: 1.5, amb: 0x223055, ambInt: 0.5, light: 0x8fa8ff, lightInt: 0.6, lightPos: [-120, 180, 80],  stars: 0.85, rain: 1.0,  neon: 1.0,  sun: 0,    moon: 1,   day: 0,    cloud: 0x0d1024, ground: 0x1a2032 },
+  { t: 24,   sky: 0x04050d, fog: 0x070818, fogDensity: 0.0032, hemi: 0x3a3a88, hemiInt: 1.5, amb: 0x223055, ambInt: 0.5, light: 0x8fa8ff, lightInt: 0.6, lightPos: [-120, 180, 80],  stars: 0.85, rain: 1.0,  neon: 1.0,  sun: 0,    moon: 1,   day: 0,    cloud: 0x0d1024, ground: 0x1a2032 },
+];
+
+// v5: phase name for the HUD clock — same boundaries the keyframes use.
+export function phaseNameFor(t) {
+  const h = ((t % 24) + 24) % 24;
+  if (h >= 5 && h < 7) return 'DAWN';
+  if (h >= 7 && h < 16.5) return 'DAY';
+  if (h >= 16.5 && h < 18.5) return 'GOLDEN HOUR';
+  if (h >= 18.5 && h < 21) return 'DUSK';
+  return 'NIGHT';
+}
 
 const NEON_COLORS = ['#ff2d78', '#00e5ff', '#ffae00', '#b300ff', '#39ff88', '#ff5e3a'];
 const SIGN_WORDS = [
@@ -126,6 +155,67 @@ export class City {
     this._buildSky();
     this._buildSkyline();
     this._buildHelipad();
+    this.setTimeOfDay(21); // v5: the game opens at 9 PM, deep night
+  }
+
+  // v5: day-night cycle — t is game hours in [0, 24). Lerps the whole look of
+  // the city between the TOD_KEYS keyframes: sky, fog, hemisphere/ambient/
+  // sun-moon light, stars, sun and moon discs, rain, neon signs, window glow,
+  // streetlights, clouds and ground. Cheap enough to call every frame.
+  setTimeOfDay(t) {
+    const h = ((t % 24) + 24) % 24;
+    this.timeOfDay = h;
+    let a = TOD_KEYS[0], b = TOD_KEYS[TOD_KEYS.length - 1];
+    for (let i = 0; i < TOD_KEYS.length - 1; i++) {
+      if (h >= TOD_KEYS[i].t && h < TOD_KEYS[i + 1].t) { a = TOD_KEYS[i]; b = TOD_KEYS[i + 1]; break; }
+    }
+    const f = b.t === a.t ? 0 : (h - a.t) / (b.t - a.t);
+    const lerp = (x, y) => x + (y - x) * f;
+    const lerpColor = (target, ca, cb) => target.copy(this._c1.setHex(ca)).lerp(this._c2.setHex(cb), f);
+    lerpColor(this.scene.background, a.sky, b.sky);
+    lerpColor(this.scene.fog.color, a.fog, b.fog);
+    this.scene.fog.density = lerp(a.fogDensity, b.fogDensity);
+    lerpColor(this.hemi.color, a.hemi, b.hemi);
+    this.hemi.intensity = lerp(a.hemiInt, b.hemiInt);
+    lerpColor(this.amb.color, a.amb, b.amb);
+    this.amb.intensity = lerp(a.ambInt, b.ambInt);
+    lerpColor(this.sunLight.color, a.light, b.light);
+    this.sunLight.intensity = lerp(a.lightInt, b.lightInt);
+    const lp = [lerp(a.lightPos[0], b.lightPos[0]), lerp(a.lightPos[1], b.lightPos[1]), lerp(a.lightPos[2], b.lightPos[2])];
+    this.sunLight.position.set(lp[0], lp[1], lp[2]);
+    const day = lerp(a.day, b.day);
+    this.dayFactor = day;
+    // stars fade out as the sun comes up
+    this.starsMat.opacity = lerp(a.stars, b.stars) * 0.85;
+    this.starsMat.visible = this.starsMat.opacity > 0.01;
+    // moon disc + glow follow the night factor; sun disc rides the light
+    const moonF = lerp(a.moon, b.moon);
+    this.moonDisc.material.opacity = moonF;
+    this.moonDisc.visible = moonF > 0.02;
+    this.moonGlow.material.opacity = moonF * 0.55;
+    this.moonGlow.visible = moonF > 0.02;
+    const sunF = lerp(a.sun, b.sun);
+    const sunDir = new THREE.Vector3(lp[0], Math.max(30, lp[1]), lp[2]).normalize().multiplyScalar(420);
+    this.sunDisc.position.copy(sunDir);
+    this.sunDisc.lookAt(0, 0, 0);
+    this.sunDisc.material.opacity = sunF;
+    this.sunDisc.visible = sunF > 0.02;
+    this.sunGlow.position.copy(sunDir);
+    this.sunGlow.material.opacity = sunF * 0.6;
+    this.sunGlow.visible = sunF > 0.02;
+    // rain thins out by day, neon dims, windows go dark
+    const rainF = lerp(a.rain, b.rain);
+    this.rainMat.opacity = 0.5 * rainF;
+    this.rain.visible = rainF > 0.05;
+    const neonF = lerp(a.neon, b.neon);
+    for (const m of this.signMats) m.opacity = 0.45 + 0.55 * neonF;
+    for (const rec of this.buildingMats) rec.mat.emissiveIntensity = rec.base * (1 - 0.7 * day);
+    for (const rec of this.streetLights) rec.light.intensity = rec.base * (1 - 0.85 * day);
+    // lamp globes go from warm tungsten at night to dull grey by day
+    this.lampMat.color.copy(this._c1.setHex(0xffe9b0)).lerp(this._c2.setHex(0x8a8a7a), day);
+    lerpColor(this.cloudMat.color, a.cloud, b.cloud);
+    lerpColor(this.groundMat.color, a.ground, b.ground);
+    this.cityGlow.intensity = 1400 * (1 - 0.8 * day);
   }
 
   _buildLights() {
@@ -143,6 +233,17 @@ export class City {
     glow.position.set(0, 40, 0);
     s.add(glow);
     this.cityGlow = glow;
+    // v5: refs the day-night cycle drives — the moon light doubles as the sun
+    this.hemi = hemi;
+    this.amb = amb;
+    this.sunLight = moon;
+    this.signMats = [];
+    this.buildingMats = [];
+    this.streetLights = [];
+    this.timeOfDay = 21;
+    this.dayFactor = 0;
+    this._c1 = new THREE.Color();
+    this._c2 = new THREE.Color();
   }
 
   _buildGround() {
@@ -150,6 +251,7 @@ export class City {
     const mat = new THREE.MeshStandardMaterial({
       color: 0x1a2032, roughness: 0.4, metalness: 0.45,
     });
+    this.groundMat = mat; // v5: day-night cycle lightens the asphalt by day
     const ground = new THREE.Mesh(geo, mat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = 0;
@@ -249,6 +351,8 @@ export class City {
               map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: landmark ? 1.5 : 1.25,
               roughness: 0.85, metalness: 0.1,
             });
+            // v5: windows dim by day, glow by night
+            this.buildingMats.push({ mat, base: landmark ? 1.5 : 1.25 });
             const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
             mesh.position.set(x, h / 2, z);
             this.scene.add(mesh);
@@ -329,6 +433,7 @@ export class City {
       const w = wide ? rng.range(9, 15) : rng.range(3.5, 5);
       const h = wide ? 2.4 : rng.range(8, 13);
       const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
+      this.signMats.push(mat); // v5: neon dims by day, burns by night
       const sign = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
       const face = rng.int(0, 3);
       const y = rng.range(6, Math.min(20, b.h - 3));
@@ -371,6 +476,7 @@ export class City {
       const [word, color] = billboards[i];
       const tex = signTexture(word, color);
       const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
+      this.signMats.push(mat); // v5: billboards dim with the rest of the neon
       const sign = new THREE.Mesh(new THREE.PlaneGeometry(18, 4.5), mat);
       sign.position.set(b.x, b.h + 3.5, b.z);
       sign.rotation.y = i % 2 === 0 ? 0 : Math.PI / 2;
@@ -382,6 +488,7 @@ export class City {
     const rng = this.rng;
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x1c2233, roughness: 0.6, metalness: 0.7 });
     const lampMat = new THREE.MeshBasicMaterial({ color: 0xffe9b0 });
+    this.lampMat = lampMat; // v5: lamps dim by day
     const lampPositions = [];
     for (const px of this.streetPositions) {
       for (const pz of this.streetPositions) {
@@ -406,6 +513,7 @@ export class City {
       const light = new THREE.PointLight(0xffd9a0, 420, 60, 1.9);
       light.position.set(p.x, 6.4, p.z);
       this.scene.add(light);
+      this.streetLights.push({ light, base: 420 }); // v5: streetlights fade by day
     }
   }
 
@@ -488,6 +596,7 @@ export class City {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     const mat = new THREE.LineBasicMaterial({ color: 0x8fb4ff, transparent: true, opacity: 0.5 });
+    this.rainMat = mat; // v5: rain thins out by day
     this.rain = new THREE.LineSegments(geo, mat);
     this.rain.frustumCulled = false;
     this.rainVelocity = this.rainDrops.map((d) => d.vel);
@@ -546,14 +655,16 @@ export class City {
       color: 0xdfe8ff, size: 1.6, sizeAttenuation: false, fog: false,
       transparent: true, opacity: 0.85,
     }));
+    this.starsMat = stars.material; // v5: stars fade out by day
     this.scene.add(stars);
     const moon = new THREE.Mesh(
       new THREE.CircleGeometry(15, 32),
-      new THREE.MeshBasicMaterial({ color: 0xf4f1de, fog: false }),
+      new THREE.MeshBasicMaterial({ color: 0xf4f1de, fog: false, transparent: true }),
     );
     moon.position.set(-280, 260, -190);
     moon.lookAt(0, 0, 0);
     this.scene.add(moon);
+    this.moonDisc = moon;
     const glowTex = glowSpriteTexture();
     const moonGlow = new THREE.Sprite(new THREE.SpriteMaterial({
       map: glowTex, color: 0xcfd8ff, transparent: true, opacity: 0.55, fog: false, depthWrite: false,
@@ -561,9 +672,30 @@ export class City {
     moonGlow.position.copy(moon.position);
     moonGlow.scale.set(90, 90, 1);
     this.scene.add(moonGlow);
+    this.moonGlow = moonGlow;
+    // v5: the sun — a warm disc with glow that rides the keyframed light
+    // position; visible by day and at golden hour, gone at night
+    const sun = new THREE.Mesh(
+      new THREE.CircleGeometry(18, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffe9a0, fog: false, transparent: true, opacity: 0 }),
+    );
+    sun.position.set(140, 220, 60);
+    sun.lookAt(0, 0, 0);
+    sun.visible = false;
+    this.scene.add(sun);
+    this.sunDisc = sun;
+    const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: glowTex, color: 0xffb347, transparent: true, opacity: 0, fog: false, depthWrite: false,
+    }));
+    sunGlow.position.copy(sun.position);
+    sunGlow.scale.set(130, 130, 1);
+    sunGlow.visible = false;
+    this.scene.add(sunGlow);
+    this.sunGlow = sunGlow;
     const cloudMat = new THREE.MeshBasicMaterial({
       color: 0x0d1024, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false, fog: false,
     });
+    this.cloudMat = cloudMat; // v5: clouds go pale by day, dark by night
     for (let i = 0; i < 6; i++) {
       const cloud = new THREE.Mesh(new THREE.PlaneGeometry(140, 46), cloudMat);
       cloud.rotation.x = -Math.PI / 2;

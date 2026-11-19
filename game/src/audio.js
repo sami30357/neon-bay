@@ -1,3 +1,4 @@
+// v5: Golden Hour — header touch under recording 01a1f255 (day-night cycle build; file content unchanged).
 // v3: re-applied under recording 01a1ee33 - v2 content unchanged.
 // Synthesized sound for Neon Bay: every sound is made with WebAudio oscillators and
 // filtered noise, so the game needs no audio files and works fully offline.
